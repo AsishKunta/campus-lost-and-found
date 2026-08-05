@@ -5,9 +5,15 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+const connectionString = process.env.DATABASE_URL;
+const isLocalDatabase =
+  connectionString.includes("localhost") ||
+  connectionString.includes("127.0.0.1") ||
+  connectionString.startsWith("postgresql:///");
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString,
+  ssl: isLocalDatabase ? false : { rejectUnauthorized: false }
 });
 
 module.exports = pool;

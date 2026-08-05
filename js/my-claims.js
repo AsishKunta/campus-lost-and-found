@@ -50,12 +50,6 @@ let _currentClaimId = null;
 let _studentEmail   = null;
 let _msgChannel     = null;
 
-// ─── Supabase client ─────────────────────────────────────
-const _SB_URL = "https://whfxsantpzrltkjucscp.supabase.co";
-const _SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoZnhzYW50cHpybHRranVjc2NwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3NTI2ODgsImV4cCI6MjA5MTMyODY4OH0.NzT3RxpZRO6BDul06_gFg4GvNyH4NGB6l8L_Lld-ZYM";
-const _sb = window.supabase.createClient(_SB_URL, _SB_KEY);
-// ─────────────────────────────────────────────────────────
-
 // ---------------------------------------------------------
 //  Render the claims list
 // ---------------------------------------------------------
@@ -89,11 +83,38 @@ function renderClaims(claims) {
         <span><i class="fas fa-calendar-alt" style="color:#1e5faf;margin-right:4px;"></i>${date}</span>
         <span class="card-status ${status}">${capitalize(status)}</span>
       </div>
+      ${status === "pending" ? `
+        <button type="button" class="cancel-claim-btn" data-claim-id="${claim.id}">
+          Cancel Claim
+        </button>` : ""}
     `;
 
     card.addEventListener("click", () => openModal(claim));
+    card.querySelector(".cancel-claim-btn")?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      cancelClaim(claim.id);
+    });
     container.appendChild(card);
   });
+}
+
+async function cancelClaim(claimId) {
+  const confirmed = await showConfirmationDialog({
+    title: "Cancel Claim?",
+    message: "Cancelling this claim removes only this claim. Your Lost Report remains active. You may claim another matching item later.",
+    cancelLabel: "Keep Claim",
+    confirmLabel: "Cancel Claim",
+  });
+  if (!confirmed) return;
+  const response = await apiFetch(`${BASE_URL}/claims/${claimId}/cancel`, {
+    method: "POST",
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return showErrorToast(body.error || "Claim could not be cancelled.");
+  }
+  showSuccessToast("Claim cancelled. Your Lost Report remains active.");
+  await loadClaims();
 }
 
 // ---------------------------------------------------------
@@ -105,7 +126,7 @@ async function loadClaims() {
   container.innerHTML = `<p style="text-align:center;color:#888;">Loading…</p>`;
 
   try {
-    const res = await fetch(`${BASE_URL}/claims`);
+    const res = await apiFetch(`${BASE_URL}/claims`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const all = await res.json();
 
@@ -178,11 +199,11 @@ function closeModal() {
   document.getElementById("mcOverlay").classList.remove("open");
   _currentClaimId = null;
   // Tear down real-time subscription
-  if (_msgChannel) { _sb.removeChannel(_msgChannel); _msgChannel = null; }
+  _msgChannel = null;
 }
 
 // ---------------------------------------------------------
-//  Load messages for a claim  (Supabase direct + real-time)
+//  Load messages through the authorized backend.
 // ---------------------------------------------------------
 
 async function loadMessages(claimId) {
@@ -192,22 +213,14 @@ async function loadMessages(claimId) {
 
   console.log("[my-claims loadMessages] Fetching for claim_id:", claimId);
 
-  const { data, error } = await _sb
-    .from("messages")
-    .select("*")
-    .eq("claim_id", claimId)
-    .order("created_at", { ascending: true });
-
-  console.log("[my-claims loadMessages] Result — rows:", data?.length ?? 0, " error:", error);
-
-  if (error) {
-    console.error("[my-claims loadMessages] FETCH FAILED:", error.message, "code:", error.code);
+  const response = await apiFetch(`${BASE_URL}/messages/${claimId}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    console.error("[my-claims loadMessages] FETCH FAILED:", error.error);
     chatBox.innerHTML = `<p style="color:#ef4444;font-size:13px;text-align:center;">Failed to load messages. Check console.</p>`;
     return;
   }
-
-  renderMessages(data || []);
-  subscribeToMessages(claimId);
+  renderMessages(await response.json());
 }
 
 function messageBubble(m) {
@@ -250,23 +263,7 @@ function appendMessageToUI(m) {
 }
 
 function subscribeToMessages(claimId) {
-  if (_msgChannel) { _sb.removeChannel(_msgChannel); _msgChannel = null; }
-
-  _msgChannel = _sb
-    .channel(`messages-student-${claimId}`)
-    .on(
-      "postgres_changes",
-      { event: "INSERT", schema: "public", table: "messages", filter: `claim_id=eq.${claimId}` },
-      (payload) => {
-        if (payload.new && String(payload.new.claim_id) === String(claimId)) {
-          appendMessageToUI(payload.new);
-        }
-      }
-    )
-    .subscribe((status, err) => {
-      if (err) console.error("[my-claims subscribeToMessages] channel error:", err);
-      else console.log("[my-claims subscribeToMessages] status:", status);
-    });
+  _msgChannel = claimId;
 }
 
 // ---------------------------------------------------------
@@ -283,29 +280,18 @@ async function sendStudentMessage() {
   input.disabled = true;
 
   const _cu = getCurrentUser();
-  const payload = {
-    claim_id:    _currentClaimId,
-    sender_type: _cu.role,
-    sender_id:   _cu.email,
-    message:     text,
-  };
+  const payload = { claim_id: _currentClaimId, recipient_role: "admin", message: text };
 
   console.log("[sendStudentMessage] Inserting:", payload);
 
-  const { data, error } = await _sb
-    .from("messages")
-    .insert([payload])
-    .select();
-
-  console.log("[sendStudentMessage] Insert result — data:", data, " error:", error);
-
-  if (error) {
-    console.error("[sendStudentMessage] INSERT FAILED:", error.message, "code:", error.code);
-    if (error.code === "42501") {
-      alert("\u274C Blocked by Row Level Security.\nFix in Supabase: Disable RLS on messages table or add: CREATE POLICY \"allow_all\" ON messages FOR ALL USING (true);");
-    } else {
-      alert("Failed to send message: " + error.message);
-    }
+  const response = await apiFetch(`${BASE_URL}/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    showErrorToast(error.error || "Failed to send message.");
     input.value    = text;
     input.disabled = false;
     return;

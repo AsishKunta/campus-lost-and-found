@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "name": "Campus Lost & Found",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "liveServer.settings.root": "/",
+    "liveServer.settings.port": 5500
+  }
+}

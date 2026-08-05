@@ -5,6 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Portal - Lost &amp; Found</title>
+  <link rel="icon" type="image/png" href="assets/profile.png" />
 
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -172,7 +173,79 @@
     .closed-banner { background:#fefce8; border:1px solid #fde68a; border-radius:8px; padding:10px 16px; margin:10px 16px 0; color:#854d0e; font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; flex-shrink:0; }
     .closed-banner i { color:#ca8a04; }
     .rc-img-wrap { position:relative; }
+    .claim-workflow-status { margin-top:12px; padding:9px 11px; border-radius:8px; background:#eff6ff; color:#1e40af; font-size:12px; }
+    .claim-workflow-status.status-action_required { background:#fff7ed; color:#9a3412; }
+    .claim-workflow-status.status-approved { background:#ecfdf5; color:#047857; }
+    .claim-workflow-status.status-rejected, .claim-workflow-status.status-closed { background:#fef2f2; color:#b91c1c; }
+    .claim-timeline { list-style:none; padding:0; margin:10px 0; border-left:2px solid #dbeafe; }
+    .claim-timeline li { position:relative; margin-left:16px; padding:0 0 14px 10px; font-size:13px; }
+    .claim-timeline li::before { content:""; position:absolute; left:-17px; top:4px; width:8px; height:8px; border-radius:50%; background:#2563eb; }
+    .claim-timeline span { display:block; color:#64748b; font-size:11px; margin-top:2px; }
+    .claim-timeline p { margin:4px 0 0; color:#475569; }
+    .verify { background:#7c3aed; color:#fff; border:0; border-radius:8px; padding:9px 12px; cursor:pointer; }
+    .claim-next-step { color:#64748b; font-size:13px; font-weight:600; }
+    input[readonly], textarea[readonly] { background:#f8fafc; color:#475569; cursor:not-allowed; }
+
+    @media (max-width: 768px) {
+      body { flex-direction:column; min-height:100vh; height:100dvh; }
+      .sidebar {
+        width:100%; min-width:0; height:auto; max-height:none; position:relative;
+        display:grid; grid-template-columns:auto minmax(0, 1fr) auto;
+        align-items:center; overflow:visible;
+      }
+      .sidebar-brand { padding:12px 14px; border-bottom:0; border-right:1px solid rgba(255,255,255,.1); }
+      .sidebar-brand h2 { white-space:nowrap; }
+      .sidebar-brand p { display:none; }
+      .sidebar-nav { display:flex; padding:0; overflow-x:auto; min-width:0; }
+      .sidebar-nav li { flex:0 0 auto; }
+      .sidebar-nav-link { padding:16px 12px; border-left:0; border-bottom:3px solid transparent; white-space:nowrap; }
+      .sidebar-nav-link:hover, .sidebar-nav-link.active { border-left-color:transparent; border-bottom-color:#60a5fa; }
+      .sidebar-footer { margin:0; padding:8px; border-top:0; border-left:1px solid rgba(255,255,255,.1); }
+      .sidebar-role-select { width:92px; padding:8px; }
+      .page-content { flex:1; min-height:0; }
+      .topbar { padding:11px 16px; }
+      .page-scroll { padding:18px 16px 56px; }
+      .messages-layout {
+        grid-template-columns:minmax(0, 1fr);
+        grid-template-rows:minmax(170px, 38%) minmax(260px, 1fr);
+        padding:10px; gap:10px;
+      }
+      .profile-card { margin:0 auto 24px; padding:20px; }
+      .profile-stats { display:grid; grid-template-columns:1fr; }
+    }
+
+    @media (max-width: 520px) {
+      .sidebar { grid-template-columns:minmax(0, 1fr) auto; }
+      .sidebar-brand { display:none; }
+      .sidebar-nav-link { font-size:12px; padding:13px 10px; gap:7px; }
+      .sidebar-nav-link i { width:auto; }
+      .topbar-title { font-size:16px; }
+      .messages-layout { grid-template-rows:minmax(150px, 34%) minmax(250px, 1fr); }
+    }
+
+    .workflow-list { display:grid; gap:16px; margin-top:18px; }
+    .workflow-record-card { display:grid; grid-template-columns:180px minmax(0,1fr); background:#fff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+    .workflow-record-image { min-height:170px; background:#f1f5f9; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#94a3b8; gap:8px; }
+    .workflow-record-image img { width:100%; height:100%; min-height:170px; object-fit:cover; }
+    .workflow-record-content { padding:20px; min-width:0; }
+    .workflow-record-heading { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+    .workflow-record-heading h3 { margin:0; color:#172554; }
+    .workflow-pill { display:inline-flex; padding:6px 10px; border-radius:999px; background:#e0f2fe; color:#075985; font-size:12px; font-weight:700; white-space:nowrap; }
+    .workflow-meta,.workflow-actions,.rc-card-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; }
+    .workflow-meta span { display:flex; gap:6px; align-items:center; color:#64748b; font-size:13px; }
+    .workspace-toolbar { display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:12px; margin:16px 0; }
+    .workspace-toolbar input,.workspace-toolbar select { width:100%; border:1px solid #dbe3ef; border-radius:10px; padding:11px 13px; background:#fff; }
+    .detail-photo-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:16px; }
+    .detail-photo-grid img,.detail-report-image { width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:1px solid #e5e7eb; }
+    .rc-description { color:#64748b; font-size:13px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    @media (max-width:700px) {
+      .workflow-record-card { grid-template-columns:1fr; }
+      .workflow-record-image { min-height:150px; max-height:220px; }
+      .workspace-toolbar { grid-template-columns:1fr; }
+      .workflow-record-heading { flex-direction:column; gap:8px; }
+    }
   </style>
+  <link rel="stylesheet" href="css/modern.css" />
 </head>
 
 <body>
@@ -180,13 +253,22 @@
   <!-- ═══════ SIDEBAR ═══════ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <h2>Lost &amp; Found</h2>
-      <p>Student Portal</p>
+      <span class="brand-mark" aria-hidden="true"><i class="fas fa-location-dot"></i></span>
+      <span class="brand-copy"><h2>Campus Recovery</h2><p>Student Workspace</p></span>
     </div>
-    <ul class="sidebar-nav">
+    <ul class="sidebar-nav" aria-label="Workspace navigation">
       <!-- Populated by router.js based on role -->
     </ul>
+    <section class="sidebar-welcome" aria-label="Workspace welcome">
+      <span class="sidebar-welcome-avatar" aria-hidden="true"><i class="fas fa-user"></i></span>
+      <span class="sidebar-welcome-label">Welcome,</span>
+      <strong id="sidebarWelcomeName">Campus User</strong>
+      <span id="sidebarWelcomeWorkspace">Student Workspace</span>
+      <span class="sidebar-welcome-divider" aria-hidden="true"></span>
+      <span class="sidebar-welcome-tagline">Helping lost things find their way home.</span>
+    </section>
     <div class="sidebar-footer">
+      <label for="roleSwitch">Active workspace</label>
       <select id="roleSwitch" class="sidebar-role-select">
         <option value="student">Student</option>
         <option value="admin">Admin</option>
@@ -209,7 +291,7 @@
             <span class="avatar-role-label" id="avatarRoleLabel">Student</span>
           </div>
           <div class="dropdown" id="profileDropdown">
-            <a href="profile.html">
+            <a href="#profile" onclick="event.preventDefault(); navigate('profile');">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               My Profile
             </a>
@@ -228,68 +310,126 @@
       <!-- ── PAGE: Dashboard ── -->
       <section class="spa-page" id="page-dashboard">
         <div class="page-scroll">
-          <h2>Lost &amp; Found Dashboard</h2>
+          <header class="page-heading">
+            <div>
+              <p class="page-eyebrow" id="dashboardEyebrow">Student workspace</p>
+              <h2 id="dashboardHeading">Found Items</h2>
+              <p class="page-intro" id="dashboardIntro">Browse items handed in across campus and start a secure recovery claim.</p>
+            </div>
+          </header>
 
-          <div class="stats-container">
+          <div class="stats-container dashboard-stats" aria-label="Dashboard overview">
             <div class="stat-card stat-reports">
-              <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+              <div class="stat-icon"><i class="fas fa-box-open"></i></div>
               <div class="stat-body">
-                <div class="stat-title">Total Reports</div>
-                <div class="stat-number">0</div>
-                <div class="stat-trend positive">+5 this week</div>
+                <div class="stat-title" id="metricTitle1">Available Found Items</div>
+                <div class="stat-number" id="metricValue1">0</div>
+                <div class="stat-context" id="metricContext1">Ready to explore</div>
               </div>
             </div>
             <div class="stat-card stat-claimed">
-              <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+              <div class="stat-icon"><i class="fas fa-shield-halved"></i></div>
               <div class="stat-body">
-                <div class="stat-title">Items Claimed</div>
-                <div class="stat-number">0</div>
-                <div class="stat-trend negative">-2 today</div>
+                <div class="stat-title" id="metricTitle2">My Active Claims</div>
+                <div class="stat-number" id="metricValue2">0</div>
+                <div class="stat-context" id="metricContext2">In progress</div>
               </div>
             </div>
             <div class="stat-card stat-pending">
-              <div class="stat-icon"><i class="fas fa-clock"></i></div>
+              <div class="stat-icon"><i class="fas fa-circle-exclamation"></i></div>
               <div class="stat-body">
-                <div class="stat-title">Pending Claims</div>
-                <div class="stat-number">0</div>
-                <div class="stat-trend positive">+3 this week</div>
+                <div class="stat-title" id="metricTitle3">Action Required</div>
+                <div class="stat-number" id="metricValue3">0</div>
+                <div class="stat-context" id="metricContext3">Needs your response</div>
+              </div>
+            </div>
+            <div class="stat-card stat-ready">
+              <div class="stat-icon"><i class="fas fa-hand-holding-heart"></i></div>
+              <div class="stat-body">
+                <div class="stat-title" id="metricTitle4">Ready for Collection</div>
+                <div class="stat-number" id="metricValue4">0</div>
+                <div class="stat-context" id="metricContext4">Approved claims</div>
               </div>
             </div>
           </div>
 
-          <div class="search-container">
+          <section class="discovery-panel" aria-labelledby="discoverHeading">
+            <div class="section-heading-row">
+              <div><p class="page-eyebrow">Item directory</p><h3 id="discoverHeading">Discover found items</h3></div>
+              <span class="results-count" id="resultsCount" aria-live="polite">Loading items…</span>
+            </div>
+          <div class="discovery-toolbar">
             <div class="search-bar-wrapper">
               <i class="fas fa-search search-icon"></i>
               <input type="text" id="globalSearch" class="search-input search-bar"
-                     placeholder="Search by item name or location..." autocomplete="off" />
+                     placeholder="Try “black backpack near the library last month”" autocomplete="off" />
               <button class="search-clear-btn" id="searchClearBtn" onclick="clearSearch()" style="display:none">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times" aria-hidden="true"></i><span class="sr-only">Clear search</span>
               </button>
             </div>
+            <details class="filter-menu" id="filterMenu">
+              <summary class="toolbar-button"><i class="fas fa-sliders" aria-hidden="true"></i> Filters <span id="filterCount" hidden>0</span></summary>
+              <div class="filter-popover">
+                <label for="categoryFilter">Category</label>
+                <select id="categoryFilter">
+                  <option value="">All categories</option><option>Bags</option><option>Electronics</option>
+                  <option>Clothing</option><option>Documents</option><option>Keys</option>
+                  <option>Accessories</option><option>Other</option>
+                </select>
+                <label for="statusFilter">Availability</label>
+                <select id="statusFilter">
+                  <option value="">Any availability</option><option value="pending">Available</option><option value="claimed">Unavailable</option>
+                </select>
+                <button type="button" class="filter-clear" id="clearFiltersBtn">Clear all filters</button>
+              </div>
+            </details>
+            <label class="sort-control" for="sortReports"><span class="sr-only">Sort found items</span>
+              <select id="sortReports"><option value="relevance">Most relevant</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Item name</option></select>
+            </label>
           </div>
-
-          <div class="category-chips" id="categoryChips">
-            <button class="chip active" data-category="">All</button>
-            <button class="chip" data-category="Lost">Lost</button>
-            <button class="chip" data-category="Found">Found</button>
-            <button class="chip" data-category="Bags">Bags</button>
-            <button class="chip" data-category="Electronics">Electronics</button>
-            <button class="chip" data-category="Clothing">Clothing</button>
-            <button class="chip" data-category="Bottles">Bottles</button>
-            <button class="chip" data-category="Accessories">Accessories</button>
-            <button class="chip" data-category="Other">Other</button>
-          </div>
-
-          <div class="status-tabs" id="statusTabs">
-            <button class="status-tab active" data-status="">All Status</button>
-            <button class="status-tab" data-status="pending">Pending</button>
-            <button class="status-tab" data-status="claimed">Claimed</button>
-          </div>
+          <div id="smartSearchStatus" class="smart-search-status" aria-live="polite"></div>
+          <div class="active-filter-chips" id="activeFilterChips" aria-live="polite"></div>
 
           <div id="reportCards" class="report-cards-grid">
             <!-- Populated by dashboard.js -->
           </div>
+          </section>
           <footer><p>© 2025 Lost &amp; Found</p></footer>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Student My Reports ── -->
+      <section class="spa-page" id="page-my-reports">
+        <div class="page-scroll">
+          <h2>My Lost Reports</h2>
+          <p class="page-intro">Track every Lost Report you submitted and see what happens next.</p>
+          <div id="myReportsList" class="workflow-list" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Student My Claims ── -->
+      <section class="spa-page" id="page-my-claims">
+        <div class="page-scroll">
+          <h2>My Claims</h2>
+          <p class="page-intro">Follow ownership verification, administrator decisions, and item return.</p>
+          <div id="myClaimsList" class="workflow-list" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ── PAGE: Admin Student Lost Reports ── -->
+      <section class="spa-page" id="page-student-lost-reports">
+        <div class="page-scroll">
+          <h2>Student Lost Reports</h2>
+          <p class="page-intro">Monitor Lost Reports independently from ownership Claim Requests.</p>
+          <div class="workspace-toolbar">
+            <input id="studentLostSearch" type="search" placeholder="Search item, description, or location" aria-label="Search Student Lost Reports">
+            <select id="studentLostStatus" aria-label="Filter Student Lost Reports by status">
+              <option value="">All statuses</option><option>Submitted</option><option>Under Review</option>
+              <option>Potential Match Found</option><option>Waiting for Student</option>
+              <option>Recovered</option><option>Closed</option>
+            </select>
+          </div>
+          <div id="studentLostReportsList" class="workflow-list" aria-live="polite"></div>
         </div>
       </section>
 
@@ -297,7 +437,7 @@
       <section class="spa-page" id="page-report">
         <div class="page-scroll">
           <div id="reportFormSection" class="report-card">
-            <h2>Report a Lost or Found Item</h2>
+            <h2 id="reportFormHeading">Report Item</h2>
             <form id="reportForm" class="report-form" novalidate>
               <div class="form-row">
                 <label for="itemName">Item Name</label>
@@ -307,11 +447,23 @@
                 </div>
               </div>
               <div class="form-row">
-                <label for="category">Category</label>
-                <select id="category">
-                  <option value="">Select category</option>
+                <label for="category">Report Type</label>
+                <select id="category" required>
+                  <option value="">Select report type</option>
                   <option value="Lost">Lost</option>
                   <option value="Found">Found</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="itemCategory">Item Category</label>
+                <select id="itemCategory">
+                  <option value="">Select item category</option>
+                  <option value="Accessories">Accessories</option>
+                  <option value="Bags">Bags</option>
+                  <option value="Clothing">Clothing</option>
+                  <option value="Documents">Documents &amp; IDs</option>
+                  <option value="Electronics">Electronics</option>
+                  <option value="Keys">Keys</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
@@ -345,6 +497,34 @@
               <div class="form-row">
                 <label for="description">Description</label>
                 <textarea id="description" rows="5" placeholder="Add any details about the item..."></textarea>
+                <div class="ai-description-tools">
+                  <button type="button" id="improveDescriptionBtn" class="ai-improve-button">✨ Improve with AI</button>
+                  <span>Optional writing help. AI does not verify accuracy.</span>
+                </div>
+                <p id="aiDescriptionFeedback" class="ai-description-feedback" role="status" aria-live="polite" hidden></p>
+                <section id="aiDescriptionPanel" class="ai-description-panel" aria-labelledby="aiDescriptionTitle" hidden>
+                  <div class="ai-description-heading">
+                    <div>
+                      <strong id="aiDescriptionTitle">AI suggestion</strong>
+                      <span>Review before using.</span>
+                    </div>
+                  </div>
+                  <div class="ai-description-comparison">
+                    <div>
+                      <span class="ai-description-label">Original</span>
+                      <p id="aiOriginalDescription"></p>
+                    </div>
+                    <div>
+                      <label class="ai-description-label" for="aiSuggestedDescription">Suggested</label>
+                      <textarea id="aiSuggestedDescription" rows="5" readonly></textarea>
+                    </div>
+                  </div>
+                  <div class="ai-description-actions">
+                    <button type="button" id="keepOriginalDescriptionBtn" class="btn btn-secondary">Keep Original</button>
+                    <button type="button" id="editAiSuggestionBtn" class="btn btn-secondary">Edit Suggestion</button>
+                    <button type="button" id="useAiSuggestionBtn" class="btn btn-primary">Use Suggestion</button>
+                  </div>
+                </section>
               </div>
               <div class="form-row">
                 <label for="itemImage">Photo (optional)</label>
@@ -352,7 +532,7 @@
                   <label class="file-upload-label" for="itemImage">
                     <i class="fa-solid fa-camera"></i> Choose Image
                   </label>
-                  <input type="file" id="itemImage" accept="image/*" style="display:none">
+                  <input type="file" id="itemImage" name="images" accept="image/*" multiple style="display:none">
                   <span id="fileName" style="margin-left:10px;font-size:.875rem;color:#6b7280;">No file chosen</span>
                 </div>
                 <img id="imagePreview" src="" alt="Preview"
@@ -367,7 +547,7 @@
             </form>
           </div>
 
-          <div id="matchResultSection" class="report-card" style="display:none;">
+          <div id="matchResultSection" class="report-card match-result-card" style="display:none;" aria-live="polite">
             <div style="text-align:center; padding:12px 0 20px;">
               <div style="font-size:2.2rem; margin-bottom:8px;">✓</div>
               <h2 style="margin:0 0 6px;">Report Submitted!</h2>
@@ -380,8 +560,8 @@
               <p style="margin:0 0 4px; font-weight:500; color:#374151;">No matches found yet.</p>
               <p style="margin:0; font-size:.875rem;">Keep an eye on the dashboard for new reports.</p>
             </div>
-            <div class="submit-container">
-              <button type="button" class="submit-btn" onclick="navigate('dashboard')">
+            <div class="submit-container match-dashboard-action">
+              <button type="button" class="submit-btn" onclick="returnToDashboard()">
                 <span class="button-text">Go to Dashboard →</span>
               </button>
             </div>
@@ -393,42 +573,65 @@
       <section class="spa-page" id="page-claim">
         <div class="page-scroll">
           <div class="claim-card">
-            <h2>Filing a Claim</h2>
+            <h2 id="claimFormHeading">Filing a Claim</h2>
             <form id="claimForm" class="report-form" enctype="multipart/form-data">
+              <div class="section-divider"><span>Authenticated Student</span></div>
+              <div class="form-row">
+                <label for="studentName">Student Name</label>
+                <input type="text" id="studentName" readonly aria-readonly="true">
+              </div>
               <div class="form-row">
                 <label for="studentId">Student ID</label>
                 <div class="input-wrapper">
                   <i class="fa-solid fa-id-card input-icon"></i>
-                  <input type="text" id="studentId" placeholder="Enter student ID" required>
+                  <input type="text" id="studentId" readonly aria-readonly="true">
                 </div>
               </div>
               <div class="form-row">
                 <label for="studentEmail">Student Email</label>
                 <div class="input-wrapper">
                   <i class="fa-solid fa-envelope input-icon"></i>
-                  <input type="email" id="studentEmail" placeholder="you@example.com" required>
+                  <input type="email" id="studentEmail" readonly aria-readonly="true">
                 </div>
               </div>
               <div class="form-row">
                 <label for="claim-itemName">Item Name</label>
                 <div class="input-wrapper">
                   <i class="fa-solid fa-tag input-icon"></i>
-                  <input type="text" id="claim-itemName" placeholder="Enter item name" required>
+                  <input type="text" id="claim-itemName" readonly aria-readonly="true">
                 </div>
               </div>
               <div class="form-row">
                 <label for="claim-location">Location</label>
                 <div class="input-wrapper">
                   <i class="fa-solid fa-location-dot input-icon"></i>
-                  <input type="text" id="claim-location" placeholder="Where did you lose it?" required>
+                  <input type="text" id="claim-location" readonly aria-readonly="true">
                 </div>
               </div>
+              <div class="form-row"><label for="claim-category">Category</label><select id="claim-category" disabled aria-disabled="true"><option value="">Select category</option><option>Accessories</option><option>Bags</option><option>Clothing</option><option>Documents</option><option>Electronics</option><option>Keys</option><option>Other</option></select></div>
+              <div class="form-row"><label id="claimDateLabel" for="claim-date">Date Found</label><input type="date" id="claim-date" readonly aria-readonly="true"></div>
+              <div class="form-row" id="claimFoundReportRow"><label for="claim-foundReportId">Found Report ID</label><input type="text" id="claim-foundReportId" readonly aria-readonly="true"></div>
+              <div class="form-row" id="claimRelatedReportRow"><label for="claim-relatedReportId">Related Lost Report ID</label><input type="text" id="claim-relatedReportId" readonly aria-readonly="true"></div>
               <div class="form-row">
-                <label for="claim-description">Description</label>
+                <label id="claimDescriptionLabel" for="claim-description">Found Item Description</label>
                 <div class="input-wrapper">
                   <i class="fa-solid fa-align-left input-icon"></i>
-                  <textarea id="claim-description" rows="5" placeholder="Describe your claim" required></textarea>
+                  <textarea id="claim-description" rows="3" readonly aria-readonly="true"></textarea>
                 </div>
+              </div>
+              <div id="verificationRequestPanel" class="inline-error" role="alert" hidden></div>
+              <div class="section-divider"><span>Ownership Verification</span></div>
+              <div class="form-row">
+                <label for="ownershipVerification">How can you prove this item belongs to you?</label>
+                <textarea id="ownershipVerification" rows="5" required placeholder="Describe non-public details such as contents, markings, serial details, or other proof."></textarea>
+              </div>
+              <div class="form-row">
+                <label for="supportingInformation">Additional Supporting Information</label>
+                <textarea id="supportingInformation" rows="3" placeholder="Add any other details that will help staff verify ownership."></textarea>
+              </div>
+              <div class="form-row">
+                <label for="studentComments">Optional Comments</label>
+                <textarea id="studentComments" rows="3" placeholder="Anything else the Lost & Found team should know?"></textarea>
               </div>
               <div class="form-row">
                 <label>Upload image (optional)</label>
@@ -461,13 +664,20 @@
       <!-- ── PAGE: Claim Requests (admin only) ── -->
       <section class="spa-page" id="page-claim-requests">
         <div class="page-scroll">
-          <h2>Claim Requests</h2>
-          <div class="search-container" style="margin-bottom:16px;">
+          <header class="page-heading">
+            <div><p class="page-eyebrow">Recovery operations</p><h2>Claim Requests</h2><p class="page-intro">Review ownership evidence and move each recovery case to its next valid step.</p></div>
+          </header>
+          <div class="claim-queue-toolbar">
             <div class="search-bar-wrapper">
               <i class="fas fa-search search-icon"></i>
               <input type="text" id="claimRequestSearch" class="search-input search-bar"
-                     placeholder="Search by item or email..." autocomplete="off" />
+                     placeholder="Search item, student ID, or email" autocomplete="off" />
             </div>
+            <select id="claimRequestStatus" aria-label="Filter claims by status">
+              <option value="">All workflow states</option><option value="pending">Awaiting Review</option>
+              <option value="under_review">Ready for Decision</option><option value="action_required">Waiting for Student</option>
+              <option value="approved">Awaiting Return</option><option value="returned">Ready to Close</option>
+            </select>
           </div>
           <div id="claimsList" class="claims-list"></div>
           <footer><p>© 2025 Lost &amp; Found</p></footer>
@@ -526,24 +736,52 @@
         </div>
       </section>
 
+      <!-- ── PAGE: Profile Details ── -->
+      <section class="spa-page" id="page-profile">
+        <div class="page-scroll">
+          <div class="profile-card">
+            <div class="profile-header">
+              <div class="profile-avatar" id="profileAvatarCircle"><span id="profileInitials"></span></div>
+              <div class="profile-meta-group">
+                <div class="profile-title-row"><h2 id="profileName">Loading…</h2></div>
+                <div class="profile-details">
+                  <div class="profile-detail-item"><span class="detail-label">Email</span><strong id="profileEmail">—</strong></div>
+                  <div class="profile-detail-item"><span class="detail-label">Workspace</span><strong id="profileWorkspace">—</strong></div>
+                  <div class="profile-detail-item"><span class="detail-label">Joined</span><strong id="profileJoined">—</strong></div>
+                </div>
+              </div>
+            </div>
+            <div class="stats-container profile-stats">
+              <div class="stat-card"><div class="stat-title">Lost Items Reported</div><div class="stat-number" id="statLost">0</div></div>
+              <div class="stat-card"><div class="stat-title">Claims Submitted</div><div class="stat-number" id="statClaims">0</div></div>
+              <div class="stat-card"><div class="stat-title">Successfully Recovered</div><div class="stat-number" id="statRecovered">0</div></div>
+            </div>
+            <div class="section-divider"><span>My Submissions</span></div>
+            <div id="profileLoadingMessage" class="inline-loading" role="status">Loading submissions…</div>
+            <div id="profileErrorMessage" class="inline-error" role="alert" hidden></div>
+            <div id="submissionsContainer" class="submissions-section"></div>
+          </div>
+        </div>
+      </section>
+
     </div><!-- /.spa-wrapper -->
 
   </div><!-- /.page-content -->
 
   <!-- ── Global Detail Modal ── -->
-  <div id="detailModal" class="modal">
+  <div id="detailModal" class="modal" role="dialog" aria-modal="true" aria-label="Report details">
     <div class="modal-content detail-modal">
-      <button id="closeDetailBtn" class="cancel-btn" style="align-self:flex-end;">&times;</button>
+      <button id="closeDetailBtn" class="cancel-btn" aria-label="Close report details" style="align-self:flex-end;">&times;</button>
       <div id="detailBody"></div>
     </div>
   </div>
 
   <!-- ── Admin: Claim Detail Modal ── -->
   <div class="modal-overlay" id="claimDetailOverlay">
-    <div class="modal-box">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-header">
         <h3 id="modalTitle">Claim Detail</h3>
-        <button id="closeClaimModal" onclick="closeClaimModal()" class="modal-close">&times;</button>
+        <button id="closeClaimModal" onclick="closeClaimModal()" class="modal-close" aria-label="Close claim details">&times;</button>
       </div>
       <div class="modal-body">
         <div id="modalImageWrap"></div>
@@ -562,10 +800,10 @@
 
   <!-- ── Admin: Send Message Popup ── -->
   <div class="modal-overlay" id="msgOverlay">
-    <div class="modal-box" style="max-width:440px;">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="sendMessageTitle" style="max-width:440px;">
       <div class="modal-header">
-        <h3>Send Message</h3>
-        <button onclick="closeMessageModal()" class="modal-close">&times;</button>
+        <h3 id="sendMessageTitle">Send Message</h3>
+        <button onclick="closeMessageModal()" class="modal-close" aria-label="Close message dialog">&times;</button>
       </div>
       <div class="modal-body">
         <p style="margin:0 0 10px;font-size:13px;color:#64748b;">To: <strong id="msgRecipient"></strong></p>
@@ -583,20 +821,19 @@
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
   <!-- ── Scripts: load order matters ── -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/userContext.js"></script>
   <script src="./js/common.js"></script>
-  <script src="./js/matching.js"></script>
-  <script src="./js/matchService.js"></script>
   <script src="./js/dashboard.js"></script>
+  <script src="./js/description-assistant.js"></script>
   <script src="./js/report.js"></script>
+  <script src="./js/report-workspaces.js"></script>
   <script src="./js/claim.js"></script>
   <script src="./js/student-messages.js"></script>
   <script src="./js/admin-dashboard.js"></script>
   <script src="./js/admin-claims.js"></script>
   <script src="./js/admin-messages.js"></script>
+  <script src="./js/profile.js"></script>
   <script src="./js/router.js"></script><!-- must be last -->
 </body>
 
 </html>
-

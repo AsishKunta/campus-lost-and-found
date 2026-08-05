@@ -8,6 +8,33 @@ let _claims = [];
 
 // Currently open claim in detail modal
 let _currentClaimId = null;
+let _activeActionOverlay = null;
+let _activeActionResolver = null;
+let _actionDialogToken = 0;
+
+function closeAdminActionOverlay(result = null) {
+  _actionDialogToken += 1;
+  document.querySelectorAll("[data-admin-action-overlay]").forEach((overlay) => overlay.remove());
+  _activeActionOverlay = null;
+  const resolve = _activeActionResolver;
+  _activeActionResolver = null;
+  if (resolve) resolve(result);
+}
+
+function mountAdminActionOverlay(overlay, resolve = null) {
+  closeAdminActionOverlay(null);
+  overlay.dataset.adminActionOverlay = "true";
+  _activeActionOverlay = overlay;
+  _activeActionResolver = resolve;
+  document.body.appendChild(overlay);
+}
+
+async function completeAdminAction(successMessage = "") {
+  closeAdminActionOverlay(null);
+  closeClaimModal();
+  if (successMessage) showSuccessToast(successMessage);
+  await loadClaims();
+}
 
 // Real-time message channel
 let _msgChannel = null;
@@ -26,6 +53,24 @@ function badgeClass(status) {
 function capitalize(str) {
   if (!str) return "Pending";
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+function adminStatusLabel(status) {
+  return ({ pending:"Awaiting Review", under_review:"Ready for Decision",
+    action_required:"Waiting for Student Response", approved:"Approved — Awaiting Return",
+    rejected:"Rejected", automatically_rejected:"Closed Automatically",
+    returned:"Returned — Ready to Close", closed:"Closed · Archived",
+    cancelled:"Cancelled", expired:"Expired" })[status] || capitalize(status);
+}
+
+function claimActions(claim) {
+  if (["pending", "under_review"].includes(claim.status)) return `
+    <button class="verify" data-action="verify"><i class="fas fa-search-plus"></i> Request Verification</button>
+    <button class="approve" data-action="approve"><i class="fas fa-check"></i> Approve</button>
+    <button class="reject" data-action="reject"><i class="fas fa-times"></i> Reject</button>`;
+  if (claim.status === "approved") return `<button class="approve" data-action="return"><i class="fas fa-box"></i> Mark Item Returned</button>`;
+  if (claim.status === "returned") return `<button class="approve" data-action="close"><i class="fas fa-archive"></i> Close Case</button>`;
+  return `<span class="claim-next-step">${escapeHtml(adminStatusLabel(claim.status))}</span>`;
 }
 
 function formatDate(dateStr) {
@@ -47,8 +92,11 @@ function resolveImageSrc(rawImage) {
 
 function buildClaimCard(claim) {
   const card = document.createElement("div");
-  card.className = "claim-card";
+  const attention = ["pending", "under_review", "returned"].includes((claim.status || "pending").toLowerCase());
+  card.className = `claim-card${attention ? " claim-card--attention" : ""}`;
   card.dataset.id = claim.id;
+  card.tabIndex = 0;
+  card.setAttribute("aria-label", `Open claim ${claim.id} review details`);
 
   // Normalise API fields (snake_case from DB join)
   const itemName  = claim.item_name  || claim.itemName  || "Unknown Item";
@@ -66,10 +114,11 @@ function buildClaimCard(claim) {
             onerror="this.style.display='none'" />`
           : `<div class="rc-img-placeholder"><i class="fas fa-image"></i><span>No image</span></div>`
       }
-      <span class="rc-badge rc-badge-${escapeHtml(status)}">${capitalize(status)}</span>
+      <span class="rc-badge rc-badge-${escapeHtml(status)}">${escapeHtml(adminStatusLabel(status))}</span>
     </div>
 
     <div class="claim-body">
+      <div class="claim-queue-kicker">Claim #${escapeHtml(String(claim.id))} · ${claim.manual_entry ? "Manual entry" : `Found Report #${escapeHtml(String(claim.report_id || "—"))}`}</div>
       <h3 class="claim-title">${escapeHtml(itemName)}</h3>
 
       <p class="claim-desc">
@@ -80,24 +129,20 @@ function buildClaimCard(claim) {
       </p>
 
       <div class="claim-meta">
-        <p><strong>Claim ID:</strong> #${escapeHtml(String(claim.id))}</p>
         ${studentId ? `<p><strong>Student ID:</strong> ${escapeHtml(String(studentId))}</p>` : ""}
         ${email     ? `<p><strong>Email:</strong> ${escapeHtml(email)}</p>`     : ""}
+        ${claim.verification_version ? `<p><strong>Verification:</strong> Version ${escapeHtml(String(claim.verification_version))}</p>` : ""}
       </div>
 
       <hr class="claim-divider" />
 
       <div class="actions">
+        <span class="claim-turn-label"><i class="fas fa-circle-arrow-right" aria-hidden="true"></i>${escapeHtml(adminStatusLabel(status))}</span>
         ${email ? `
         <button class="msg-btn" data-action="msg">
           <i class="fas fa-envelope"></i> Message Student
         </button>` : ""}
-        <button class="approve" data-action="approve">
-          <i class="fas fa-check"></i> Approve
-        </button>
-        <button class="reject" data-action="reject">
-          <i class="fas fa-times"></i> Reject
-        </button>
+        ${claimActions(claim)}
       </div>
     </div>
   `;
@@ -111,6 +156,15 @@ function buildClaimCard(claim) {
     e.stopPropagation();
     handleAction(claim.id, "rejected");
   });
+  card.querySelector('[data-action="verify"]')?.addEventListener("click", (e) => {
+    e.stopPropagation(); requestVerification(claim.id);
+  });
+  card.querySelector('[data-action="return"]')?.addEventListener("click", async (e) => {
+    e.stopPropagation(); await transitionClaim(claim.id, "return", "Item return confirmed.");
+  });
+  card.querySelector('[data-action="close"]')?.addEventListener("click", async (e) => {
+    e.stopPropagation(); await transitionClaim(claim.id, "close", "Recovery case closed and archived.");
+  });
   card.querySelector(".msg-btn")?.addEventListener("click", (e) => {
     e.stopPropagation();
     openMessageModal(claim.id, email);
@@ -118,6 +172,9 @@ function buildClaimCard(claim) {
 
   // Click anywhere on card → open detail modal
   card.addEventListener("click", () => openClaimModal(claim));
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.target === card) openClaimModal(claim);
+  });
 
   return card;
 }
@@ -134,7 +191,8 @@ function renderClaims(claims) {
     container.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-inbox"></i>
-        <p>No claim requests yet.</p>
+        <p>No claims require review.</p>
+        <small>New and updated claims will appear here automatically.</small>
       </div>`;
     return;
   }
@@ -169,13 +227,24 @@ function openClaimModal(claim) {
   document.getElementById("modalTitle").textContent = itemName;
   document.getElementById("modalDetails").innerHTML = `
     <strong>Claim ID:</strong> #${escapeHtml(String(claim.id))}<br>
-    <strong>Status:</strong> ${capitalize(status)}<br>
+    <strong>Status:</strong> ${escapeHtml(adminStatusLabel(status))}<br>
+    ${claim.manual_entry
+      ? `<strong>Claim Source:</strong> Manual Entry<br>
+         <strong>Item Category:</strong> ${escapeHtml(claim.item_category || "—")}<br>
+         <strong>Item Date:</strong> ${formatDate(claim.item_date)}<br>`
+      : `<strong>Original Found Report:</strong> #${escapeHtml(String(claim.report_id))} — ${escapeHtml(claim.found_item_name || itemName)}<br>`}
+    <strong>Item Description:</strong> ${escapeHtml(claim.found_description || claim.description || "—")}<br>
     ${studentId ? `<strong>Student ID:</strong> ${escapeHtml(String(studentId))}<br>` : ""}
     ${email     ? `<strong>Email:</strong> ${escapeHtml(email)}<br>`     : ""}
     ${location  ? `<strong>Location:</strong> ${escapeHtml(location)}<br>` : ""}
     ${claim.created_at ? `<strong>Submitted:</strong> ${formatDate(claim.created_at)}<br>` : ""}
     <br>
-    <p class="modal-desc"><strong>Description:</strong> ${escapeHtml(claim.description || "No description")}</p>
+    <p class="modal-desc"><strong>Ownership Verification:</strong> ${escapeHtml(claim.ownership_verification || "No verification supplied")}</p>
+    <p class="modal-desc"><strong>Supporting Information:</strong> ${escapeHtml(claim.supporting_information || "None")}</p>
+    <p class="modal-desc"><strong>Student Comments:</strong> ${escapeHtml(claim.student_comments || "None")}</p>
+    ${claim.verification_request ? `<p class="modal-desc"><strong>Requested Proof:</strong> ${escapeHtml(claim.verification_request)}</p>` : ""}
+    <h4>Timeline</h4>
+    <ol class="claim-timeline">${(claim.timeline || []).map((event) => `<li><strong>${escapeHtml(timelineLabel(event.eventType))}</strong><span>${formatDate(event.createdAt)}</span>${event.reason ? `<p>${escapeHtml(event.reason)}</p>` : ""}</li>`).join("") || "<li>No timeline events.</li>"}</ol>
   `;
 
   document.getElementById("claimDetailOverlay").classList.add("open");
@@ -200,7 +269,7 @@ async function loadMessages(claimId) {
   console.log("[loadMessages] Fetching for claim_id:", claimId);
 
   try {
-    const res = await fetch(`${BASE_URL}/messages/${claimId}?viewer=admin`);
+    const res = await apiFetch(`${BASE_URL}/messages/${claimId}?viewer=admin`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -282,7 +351,7 @@ async function sendAdminMessage() {
   console.log("[admin-claims send] outgoing admin message payload:", payload);
 
   try {
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await apiFetch(`${BASE_URL}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -349,7 +418,7 @@ async function sendMessage() {
   console.log("[admin-claims modal send] outgoing admin message payload:", payload);
 
   try {
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await apiFetch(`${BASE_URL}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -373,28 +442,41 @@ async function sendMessage() {
 
 async function loadClaims() {
   const container = document.getElementById("claimsList");
-  container.innerHTML = `<p style="text-align:center;color:#888;">Loading claims…</p>`;
+  if (!container) return;
+  container.innerHTML = `<p style="text-align:center;color:#888;" role="status">Loading claims…</p>`;
   try {
-    const res = await fetch(`${BASE_URL}/claims`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _claims = await res.json();
+    const res = await apiFetch(`${BASE_URL}/claims`);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.error || `Claims could not be loaded (${res.status}).`);
+    _claims = Array.isArray(body) ? body : [];
     renderClaims(_claims);
+    const reviewClaimId = sessionStorage.getItem("phase3ReviewClaimId");
+    if (reviewClaimId) {
+      sessionStorage.removeItem("phase3ReviewClaimId");
+      await openApprovalDialog(Number(reviewClaimId));
+    }
   } catch (err) {
     console.error("loadClaims error:", err);
-    container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Failed to load claims. Is the backend running?</p></div>`;
+    container.innerHTML = `<div class="empty-state" role="alert"><i class="fas fa-exclamation-circle"></i><p>${escapeHtml(err.message || "Claims could not be loaded. Please try again.")}</p><button type="button" class="secondary-btn" id="retryClaims">Try again</button></div>`;
+    document.getElementById("retryClaims")?.addEventListener("click", loadClaims);
   }
 }
 
 // ---------------------------------------------------------
-//  Handle Approve / Reject — calls PUT /claims/:id
+//  Handle transactional approve/reject decisions.
 // ---------------------------------------------------------
 
 async function handleAction(claimId, newStatus) {
+  if (newStatus === "approved") {
+    return openApprovalDialog(claimId);
+  }
+  const reason = await textActionDialog({ title: "Reject Claim", label: "Rejection reason", confirmLabel: "Reject Claim" });
+  if (!reason) return;
   try {
-    const res = await fetch(`${BASE_URL}/claims/${claimId}`, {
-      method: "PUT",
+    const res = await apiFetch(`${BASE_URL}/claims/${claimId}/decision`, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ decision: "reject", reason }),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -407,12 +489,107 @@ async function handleAction(claimId, newStatus) {
     }
 
     console.log(`[handleAction] Claim ${claimId} → ${newStatus}`, data);
-    // Refresh the list so the badge updates immediately
-    await loadClaims();
+    await completeAdminAction();
   } catch (err) {
     console.error("handleAction error:", err);
     alert("Failed to update claim status. Please try again.");
   }
+}
+
+function timelineLabel(type) {
+  return ({ created:"Claim Submitted", admin_reviewing:"Admin Reviewing",
+    additional_verification_requested:"Additional Verification Requested",
+    student_resubmitted:"Student Resubmitted", approved:"Approved",
+    manual_rejected:"Rejected", item_returned:"Item Returned", case_closed:"Case Closed" })[type] || String(type || "Update").replaceAll("_", " ");
+}
+
+function textActionDialog({ title, label, confirmLabel }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "claim-modal-overlay open";
+    overlay.innerHTML = `<div class="claim-modal-box" role="dialog" aria-modal="true"><div class="claim-modal-body">
+      <h2>${escapeHtml(title)}</h2><label>${escapeHtml(label)}<textarea rows="4" required></textarea></label>
+      <div class="modal-actions"><button data-action="cancel">Cancel</button><button class="approve" data-action="confirm">${escapeHtml(confirmLabel)}</button></div>
+    </div></div>`;
+    mountAdminActionOverlay(overlay, resolve);
+    const textarea = overlay.querySelector("textarea"); textarea.focus();
+    overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => closeAdminActionOverlay(null));
+    overlay.querySelector('[data-action="confirm"]').addEventListener("click", () => {
+      const result = textarea.value.trim();
+      if (!result) return showErrorToast(`${label} is required.`);
+      closeAdminActionOverlay(result);
+    });
+  });
+}
+
+async function requestVerification(claimId) {
+  const explanation = await textActionDialog({ title:"Request More Verification", label:"Additional proof required", confirmLabel:"Send Request" });
+  if (!explanation) return;
+  const response = await apiFetch(`${BASE_URL}/claims/${claimId}/request-verification`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ explanation }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) return showErrorToast(body.error || "Request failed.");
+  await completeAdminAction("Verification request sent to the student.");
+}
+
+async function transitionClaim(claimId, action, successMessage) {
+  const response = await apiFetch(`${BASE_URL}/claims/${claimId}/${action}`, { method:"POST" });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) return showErrorToast(body.error || "Claim could not be updated.");
+  await completeAdminAction(successMessage);
+}
+
+async function openApprovalDialog(claimId) {
+  closeAdminActionOverlay(null);
+  const dialogToken = _actionDialogToken;
+  await apiFetch(`${BASE_URL}/claims/${claimId}/review`, { method: "POST" });
+  const relatedResponse = await apiFetch(`${BASE_URL}/claims/${claimId}/related`);
+  const related = relatedResponse.ok ? await relatedResponse.json() : [];
+  if (dialogToken !== _actionDialogToken) return;
+  const overlay = document.createElement("div");
+  overlay.className = "claim-modal-overlay open";
+  overlay.innerHTML = `
+    <div class="claim-modal-box" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
+      <div class="claim-modal-body">
+        <h2 id="approvalTitle">Approve Claim #${escapeHtml(String(claimId))}</h2>
+        <p>Related claims from the same Lost Report are pre-selected. Uncheck any claim that should remain open.</p>
+        <div class="related-claim-list">
+          ${related.length ? related.map((claim) => `
+            <label>
+              <input type="checkbox" name="relatedClaim" value="${claim.id}" checked>
+              Close Claim #${claim.id} — ${escapeHtml(claim.found_item_name || claim.item_name || "Item")}
+            </label>`).join("") : "<p>No other active related claims.</p>"}
+        </div>
+        <label for="phase3AdminNotes"><strong>Internal Verification Notes</strong> (optional, admins only)</label>
+        <textarea id="phase3AdminNotes" rows="4" placeholder="Internal verification notes"></textarea>
+        <div class="modal-actions">
+          <button type="button" data-action="cancel">Cancel</button>
+          <button type="button" class="approve" data-action="approve">Approve Claim</button>
+        </div>
+      </div>
+    </div>`;
+  mountAdminActionOverlay(overlay);
+  overlay.querySelector("#phase3AdminNotes")?.focus();
+  overlay.querySelector('[data-action="cancel"]').addEventListener("click", () => closeAdminActionOverlay(null));
+  overlay.querySelector('[data-action="approve"]').addEventListener("click", async () => {
+    const approveButton = overlay.querySelector('[data-action="approve"]');
+    approveButton.disabled = true;
+    const closeClaimIds = [...overlay.querySelectorAll('input[name="relatedClaim"]:checked')]
+      .map((input) => Number(input.value));
+    const adminNotes = overlay.querySelector("#phase3AdminNotes").value.trim();
+    const response = await apiFetch(`${BASE_URL}/claims/${claimId}/decision`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision: "approve", closeClaimIds, adminNotes }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      approveButton.disabled = false;
+      return showErrorToast(body.error || "Approval failed.");
+    }
+    await completeAdminAction("Claim approved and selected related claims closed.");
+  });
 }
 
 // ---------------------------------------------------------
@@ -459,26 +636,25 @@ function escapeHtml(str) {
       }
     });
 
-    var _srch = document.getElementById("claimSearch");
-    if (_srch) {
-      _srch.addEventListener("input", function () {
-        var v = _srch.value.toLowerCase().trim();
-        if (!v) { renderClaims(_claims); return; }
-        var filtered = _claims.filter(function (c) {
-          return (c.item_name     || "").toLowerCase().includes(v) ||
-                 (c.student_email || "").toLowerCase().includes(v) ||
-                 String(c.student_id || "").includes(v);
-        });
-        renderClaims(filtered);
+    var _srch = document.getElementById("claimRequestSearch");
+    var _status = document.getElementById("claimRequestStatus");
+    var filterQueue = function () {
+      var value = (_srch?.value || "").toLowerCase().trim();
+      var status = _status?.value || "";
+      var filtered = _claims.filter(function (claim) {
+        var matchesText = !value ||
+          (claim.item_name || claim.itemName || "").toLowerCase().includes(value) ||
+          (claim.student_email || claim.email || "").toLowerCase().includes(value) ||
+          String(claim.student_id || "").includes(value);
+        return matchesText && (!status || claim.status === status);
       });
-    }
+      renderClaims(filtered);
+    };
+    if (_srch) _srch.addEventListener("input", filterQueue);
+    if (_status) _status.addEventListener("change", filterQueue);
   }
 
-  if (typeof window.registerPage === "function") {
-    window.registerPage("claim-requests", initAdminClaims);
-  } else {
-    document.addEventListener("DOMContentLoaded", initAdminClaims);
-  }
+  window.initAdminClaims = initAdminClaims;
   window.closeClaimModal   = closeClaimModal;
   window.closeMessageModal = closeMessageModal;
   window.sendMessage       = sendMessage;

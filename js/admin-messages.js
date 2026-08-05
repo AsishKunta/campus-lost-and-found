@@ -89,7 +89,7 @@ function parseConversationsPayload(payload) {
 
 async function loadClaims() {
   try {
-    const res = await fetch(`${BASE_URL}/messages/conversations?role=admin&includeAllMessages=true`);
+    const res = await apiFetch(`${BASE_URL}/messages/conversations?scope=all&includeAllMessages=true`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const payload = await res.json();
     console.log("[admin-messages] fetched admin conversations response (raw):", payload);
@@ -281,7 +281,7 @@ async function loadMessages(claimId) {
   history.innerHTML = '<p class="no-messages-hint">Loading\u2026</p>';
 
   try {
-    const res = await fetch(`${BASE_URL}/messages/${claimId}?viewer=admin`);
+    const res = await apiFetch(`${BASE_URL}/messages/${claimId}?viewer=admin`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
@@ -394,7 +394,7 @@ async function sendAdminMessage() {
   console.log("[admin send] outgoing admin message payload:", insertPayload);
 
   try {
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await apiFetch(`${BASE_URL}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(insertPayload),
@@ -525,11 +525,5 @@ function formatListTimestamp(iso) {
   window.initAdminMessages = initAdminMessages;
   window.sendAdminMessage  = sendAdminMessage;
   window.filterClaims      = filterClaims;
-
-  if (typeof window.registerPage !== "function") {
-    document.addEventListener("DOMContentLoaded", function () {
-      initAdminMessages();
-    });
-  }
 
 })();

@@ -1,113 +1,181 @@
-const pool   = require("../db");
 const bcrypt = require("bcrypt");
+const pool = require("../db");
+const { getAuthConfig } = require("../config/auth");
+const {
+  AuthError,
+  createSession,
+  registerUser,
+  revokeSession,
+  updatePreferredWorkspace,
+  verifyCredentials,
+} = require("../services/authService");
+const { parseCookies } = require("../middleware/authenticate");
+const {
+  clearSessionCookieOptions,
+  sessionCookieOptions,
+} = require("../utils/sessionCookie");
+const { logError } = require("../utils/safeLogger");
+const { createLoginAttemptLimiter } = require("../services/loginAttemptLimiter");
 
-const SALT_ROUNDS = 10;
-
-// ─── POST /auth/signup ────────────────────────────────────────────────────────
-async function signup(req, res) {
-  const { name, email, password } = req.body;
-
-  // Basic validation
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "Name, email, and password are required." });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: "Invalid email format." });
-  }
-
-  try {
-    // Check for duplicate
-    const existing = await pool.query(
-      "SELECT id FROM users WHERE email = $1",
-      [email.toLowerCase()]
-    );
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: "An account with this email already exists." });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-
-    const result = await pool.query(
-      `INSERT INTO users (name, email, password)
-       VALUES ($1, $2, $3)
-       RETURNING id, name, email, created_at`,
-      [name.trim(), email.toLowerCase(), hashedPassword]
-    );
-
-    console.log("✅ Signup:", result.rows[0].email);
-    return res.status(201).json({ message: "Account created successfully.", user: result.rows[0] });
-  } catch (err) {
-    console.error("❌ Signup error:", err);
-    return res.status(500).json({ error: "Internal server error." });
-  }
+function requestMetadata(req) {
+  return {
+    userAgent: String(req.get("user-agent") || "").slice(0, 1000) || null,
+    ipAddress: req.ip || null,
+  };
 }
 
-// ─── POST /auth/login ─────────────────────────────────────────────────────────
-async function login(req, res) {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required." });
-  }
-
-  try {
-    const result = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email.toLowerCase()]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Invalid credentials." });
-    }
-
-    const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-
-    if (!match) {
-      return res.status(401).json({ error: "Invalid credentials." });
-    }
-
-    console.log("✅ Login:", user.email);
-    return res.status(200).json({
-      message: "Login successful.",
-      user: {
-        id:         user.id,
-        name:       user.name,
-        email:      user.email,
-        created_at: user.created_at,
-      },
+function sendAuthError(res, error) {
+  if (error instanceof AuthError) {
+    return res.status(error.status).json({
+      error: error.message,
+      code: error.code,
     });
-  } catch (err) {
-    console.error("❌ Login error:", err);
-    return res.status(500).json({ error: "Internal server error." });
   }
+
+  logError("authentication.request_failed", error);
+  return res.status(500).json({
+    error: "Authentication service unavailable.",
+    code: "AUTH_SERVICE_ERROR",
+  });
 }
 
-// ─── GET /auth/profile/:email ─────────────────────────────────────────────────
-async function getProfile(req, res) {
-  const { email } = req.params;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email is required." });
-  }
-
-  try {
-    const result = await pool.query(
-      "SELECT id, name, email, created_at FROM users WHERE email = $1",
-      [email.toLowerCase()]
+function requestedSessionTtl(body, config) {
+  const rememberMe = body?.rememberMe;
+  if (rememberMe !== undefined && typeof rememberMe !== "boolean") {
+    throw new AuthError(
+      "Remember me must be true or false.",
+      400,
+      "INVALID_REMEMBER_ME"
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User not found." });
-    }
-
-    return res.status(200).json({ user: result.rows[0] });
-  } catch (err) {
-    console.error("❌ Profile fetch error:", err);
-    return res.status(500).json({ error: "Internal server error." });
   }
+  return rememberMe === true
+    ? config.rememberedSessionTtlMs
+    : config.sessionTtlMs;
 }
 
-module.exports = { signup, login, getProfile };
+function createAuthController(dependencies = {}) {
+  const database = dependencies.pool || pool;
+  const passwordHasher = dependencies.bcrypt || bcrypt;
+  const config = dependencies.config || getAuthConfig();
+  const loginLimiter = dependencies.loginLimiter || createLoginAttemptLimiter({
+    maxAttempts: config.loginRateLimitMax,
+    windowMs: config.loginRateLimitWindowMs,
+  });
+
+  async function signup(req, res) {
+    try {
+      const user = await registerUser(database, passwordHasher, req.body || {}, {
+        demoDomainRolesEnabled: config.demoDomainRolesEnabled,
+      });
+      return res.status(201).json({
+        message: "Account created successfully.",
+        user,
+      });
+    } catch (error) {
+      return sendAuthError(res, error);
+    }
+  }
+
+  async function login(req, res) {
+    const email = req.body?.email;
+    const limit = loginLimiter.check(req, email);
+    if (!limit.allowed) {
+      res.set?.("Retry-After", String(limit.retryAfterSeconds));
+      return res.status(429).json({
+        error: "Too many failed login attempts. Please try again later.",
+        code: "LOGIN_RATE_LIMITED",
+      });
+    }
+    try {
+      const sessionTtlMs = requestedSessionTtl(req.body, config);
+      const user = await verifyCredentials(
+        database,
+        passwordHasher,
+        req.body || {}
+      );
+      const session = await createSession(database, user.id, {
+        ttlMs: sessionTtlMs,
+        ...requestMetadata(req),
+      });
+
+      loginLimiter.recordSuccess(req, email);
+
+      res.cookie(
+        config.cookieName,
+        session.token,
+        sessionCookieOptions(config, session.expiresAt)
+      );
+      return res.status(200).json({
+        message: "Login successful.",
+        user,
+        expiresAt: session.expiresAt,
+      });
+    } catch (error) {
+      if (error instanceof AuthError && error.code === "INVALID_CREDENTIALS") {
+        loginLimiter.recordFailure(req, email);
+      }
+      return sendAuthError(res, error);
+    }
+  }
+
+  async function logout(req, res) {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies[config.cookieName];
+
+    try {
+      await revokeSession(database, token);
+      res.clearCookie(config.cookieName, clearSessionCookieOptions(config));
+      return res.status(200).json({ message: "Logged out successfully." });
+    } catch (error) {
+      return sendAuthError(res, error);
+    }
+  }
+
+  function me(req, res) {
+    return res.status(200).json({
+      user: req.user,
+      expiresAt: req.auth.expiresAt,
+    });
+  }
+
+  function getProfile(req, res) {
+    const requestedEmail = String(req.params.email || "").trim().toLowerCase();
+    if (requestedEmail !== req.user.email) {
+      return res.status(403).json({
+        error: "You can only access your own profile.",
+        code: "PROFILE_ACCESS_DENIED",
+      });
+    }
+    return res.status(200).json({ user: req.user });
+  }
+
+  async function setWorkspace(req, res) {
+    try {
+      const user = await updatePreferredWorkspace(
+        database,
+        req.user.id,
+        req.body?.workspace
+      );
+      req.user = user;
+      return res.status(200).json({ user });
+    } catch (error) {
+      return sendAuthError(res, error);
+    }
+  }
+
+  function developmentStatus(req, res) {
+    return res.status(200).json({
+      enabled: config.developmentBypassEnabled,
+      mode: config.developmentBypassEnabled ? "development-bypass" : "authentication",
+    });
+  }
+
+  return { developmentStatus, getProfile, login, logout, me, setWorkspace, signup };
+}
+
+module.exports = {
+  ...createAuthController(),
+  createAuthController,
+  requestedSessionTtl,
+  sendAuthError,
+};

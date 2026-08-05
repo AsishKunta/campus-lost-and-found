@@ -1,4 +1,6 @@
 const pool = require("../db");
+const { hasRole } = require("../middleware/authorize");
+const { logError, logInfo } = require("../utils/safeLogger");
 
 function normalizeRole(role, fallback = "student") {
   return ["admin", "student"].includes(String(role || "").toLowerCase())
@@ -33,17 +35,33 @@ exports.getMessages = async (req, res) => {
   if (!claim_id) return res.status(400).json({ error: "claim_id is required." });
 
   try {
+    const admin = hasRole(req.user, "admin");
+    const parsedClaimId = parseInt(claim_id, 10);
     const result = await pool.query(
-      `SELECT * FROM messages WHERE claim_id = $1 ORDER BY created_at ASC`,
-      [parseInt(claim_id, 10)]
+      `SELECT m.* FROM messages m
+       INNER JOIN claims c ON c.id = m.claim_id
+       WHERE m.claim_id = $1 AND ($2::boolean OR c.user_id = $3)
+       ORDER BY m.created_at ASC`,
+      [parsedClaimId, admin, req.user.id]
     );
+    if (!result.rows.length) {
+      const access = await pool.query(
+        "SELECT 1 FROM claims WHERE id = $1 AND ($2::boolean OR user_id = $3)",
+        [parsedClaimId, admin, req.user.id]
+      );
+      if (!access.rows[0]) {
+        return res.status(404).json({ error: "Conversation not found." });
+      }
+    }
     const normalized = (result.rows || []).map(normalizeMessageRow);
-    console.log(
-      `[messages.getMessages] viewer=${viewer} claim_id=${claim_id} loaded_count=${normalized.length}`
-    );
+    logInfo("messages.loaded", {
+      claimId: parsedClaimId,
+      viewerRole: viewer,
+      messageCount: normalized.length,
+    });
     res.json(normalized);
   } catch (err) {
-    console.error("getMessages error:", err);
+    logError("messages.load_failed", err);
     res.status(500).json({ error: "Failed to fetch messages." });
   }
 };
@@ -52,8 +70,8 @@ exports.getMessages = async (req, res) => {
 //  GET /messages/conversations?role=admin|student&email=
 // ------------------------------------------------------------------
 exports.getConversations = async (req, res) => {
-  const role = normalizeRole(req.query.role, "student");
-  const email = String(req.query.email || "").trim().toLowerCase();
+  const role = hasRole(req.user, "admin") &&
+    String(req.query.scope || "").toLowerCase() === "all" ? "admin" : "student";
   const includeAllMessages = String(req.query.includeAllMessages || "").toLowerCase() === "true";
 
   try {
@@ -61,11 +79,8 @@ exports.getConversations = async (req, res) => {
     let whereSql = "";
 
     if (role === "student") {
-      if (!email) {
-        return res.status(400).json({ error: "email is required for student conversations." });
-      }
-      params.push(email);
-      whereSql = "WHERE LOWER(COALESCE(c.student_email, '')) = $1";
+      params.push(req.user.id);
+      whereSql = "WHERE c.user_id = $1";
     }
 
     const result = await pool.query(
@@ -131,9 +146,11 @@ exports.getConversations = async (req, res) => {
       status: row.status,
     }));
 
-    console.log(
-      `[messages.getConversations] role=${role}${email ? ` email=${email}` : ""} messages_loaded=${rows.length} grouped_conversations=${conversations.length}`
-    );
+    logInfo("messages.conversations_loaded", {
+      viewerRole: role,
+      messageCount: rows.length,
+      conversationCount: conversations.length,
+    });
 
     if (includeAllMessages) {
       return res.json({
@@ -144,7 +161,7 @@ exports.getConversations = async (req, res) => {
 
     res.json(conversations);
   } catch (err) {
-    console.error("getConversations error:", err);
+    logError("messages.conversations_failed", err);
     res.status(500).json({ error: "Failed to fetch conversations." });
   }
 };
@@ -155,29 +172,22 @@ exports.getConversations = async (req, res) => {
 exports.createMessage = async (req, res) => {
   const {
     claim_id,
-    sender_role,
     recipient_role,
     message,
-    sender_type,
-    sender_id,
   } = req.body;
 
   const parsedClaimId = parseInt(claim_id, 10);
-  const safeSenderRole = normalizeRole(sender_role || sender_type, "student");
+  const safeSenderRole = normalizeRole(req.user.role, "student");
   const safeRecipientRole = normalizeRole(
     recipient_role,
     safeSenderRole === "admin" ? "student" : "admin"
   );
 
-  const outgoingPayload = {
-    claim_id: parsedClaimId,
-    sender_role: safeSenderRole,
-    recipient_role: safeRecipientRole,
-    message: String(message || "").trim(),
-    sender_id: String(sender_id || "").trim(),
-  };
-
-  console.log("[messages.createMessage] outgoing payload:", outgoingPayload);
+  logInfo("messages.creation_requested", {
+    claimId: parsedClaimId,
+    senderUserId: req.user.id,
+    senderRole: safeSenderRole,
+  });
 
   if (!parsedClaimId || Number.isNaN(parsedClaimId)) {
     return res.status(400).json({ error: "claim_id is required." });
@@ -187,30 +197,42 @@ exports.createMessage = async (req, res) => {
   }
 
   try {
-    const claimCheck = await pool.query(`SELECT id FROM claims WHERE id = $1 LIMIT 1`, [parsedClaimId]);
+    const admin = hasRole(req.user, "admin");
+    const claimCheck = await pool.query(
+      `SELECT id FROM claims
+       WHERE id = $1 AND ($2::boolean OR user_id = $3)
+       LIMIT 1`,
+      [parsedClaimId, admin, req.user.id]
+    );
     if (claimCheck.rows.length === 0) {
       return res.status(404).json({ error: "Claim not found for claim_id." });
     }
 
     const result = await pool.query(
-      `INSERT INTO messages (claim_id, sender_role, recipient_role, sender_type, sender_id, message)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO messages
+         (claim_id, sender_role, recipient_role, sender_type, sender_id, sender_user_id, message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         parsedClaimId,
         safeSenderRole,
         safeRecipientRole,
         safeSenderRole,
-        String(sender_id || "").trim(),
+        req.user.email,
+        req.user.id,
         String(message).trim(),
       ]
     );
 
     const saved = normalizeMessageRow(result.rows[0]);
-    console.log("[messages.createMessage] saved record:", saved);
+    logInfo("messages.created", {
+      claimId: parsedClaimId,
+      senderUserId: req.user.id,
+      messageId: saved.id,
+    });
     res.status(201).json(saved);
   } catch (err) {
-    console.error("createMessage error:", err);
+    logError("messages.creation_failed", err);
     res.status(500).json({ error: "Failed to send message." });
   }
 };

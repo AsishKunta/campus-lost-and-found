@@ -87,7 +87,7 @@ async function loadConversations() {
   }
 
   try {
-    const res = await fetch(
+    const res = await apiFetch(
       `${BASE_URL}/messages/conversations?role=student&email=${encodeURIComponent(_studentEmail)}`
     );
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -220,7 +220,7 @@ async function loadMessages(claimId) {
   console.log("[student-messages loadMessages] claim_id:", claimId, "(type:", typeof claimId, ")");
 
   try {
-    const res = await fetch(`${BASE_URL}/messages/${claimId}?viewer=student`);
+    const res = await apiFetch(`${BASE_URL}/messages/${claimId}?viewer=student`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data = await res.json();
@@ -335,7 +335,7 @@ async function sendMessage() {
   console.log("[student-messages sendMessage] Inserting:", payload);
 
   try {
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await apiFetch(`${BASE_URL}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

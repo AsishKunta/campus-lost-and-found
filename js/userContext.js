@@ -13,21 +13,18 @@
  * @returns {{ role: string, email: string, id: string }}
  */
 function getCurrentUser() {
-  const role = localStorage.getItem("role") || "student";
-
-  if (role === "admin") {
-    return {
-      role:  "admin",
-      email: "admin@test.com",
-      id:    "admin-1",
-    };
-  }
+  let storedUser = null;
+  try {
+    storedUser = JSON.parse(localStorage.getItem("currentUser"));
+  } catch (_) {}
+  const roles = Array.isArray(storedUser?.roles) ? storedUser.roles : [storedUser?.role || "student"];
+  const requestedRole = localStorage.getItem("role") || storedUser?.preferredWorkspace || storedUser?.role;
+  const role = roles.includes(requestedRole) ? requestedRole : roles[0];
 
   // For student, prefer a real logged-in email when available
   let email = "student@test.com";
   try {
-    const stored = JSON.parse(localStorage.getItem("currentUser"));
-    if (stored?.email) email = stored.email.toLowerCase();
+    if (storedUser?.email) email = storedUser.email.toLowerCase();
   } catch (_) {}
 
   if (email === "student@test.com") {
@@ -36,8 +33,12 @@ function getCurrentUser() {
   }
 
   return {
-    role:  "student",
+    role,
+    roles,
+    preferredWorkspace: storedUser?.preferredWorkspace || role,
     email: email,
-    id:    email,
+    name: storedUser?.name || storedUser?.displayName || "",
+    displayName: storedUser?.displayName || storedUser?.name || "",
+    id:    storedUser?.id || email,
   };
 }
