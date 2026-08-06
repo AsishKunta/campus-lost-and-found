@@ -1,19 +1,24 @@
-const { Pool } = require('pg');
-
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is not set. Make sure backend/.env exists with DATABASE_URL defined.");
-  process.exit(1);
-}
+const { Pool } = require("pg");
 
 const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required");
+}
+
+const dbUrl = new URL(connectionString);
+
 const isLocalDatabase =
-  connectionString.includes("localhost") ||
-  connectionString.includes("127.0.0.1") ||
-  connectionString.startsWith("postgresql:///");
+  dbUrl.hostname === "localhost" ||
+  dbUrl.hostname === "127.0.0.1";
 
 const pool = new Pool({
   connectionString,
-  ssl: isLocalDatabase ? false : { rejectUnauthorized: false }
+  ssl: isLocalDatabase
+    ? false
+    : {
+        rejectUnauthorized: false,
+      },
 });
 
 module.exports = pool;
