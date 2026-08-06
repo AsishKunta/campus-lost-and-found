@@ -132,8 +132,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 const LOCAL_API_HOSTS = ["localhost", "127.0.0.1"];
 const API_HOST = LOCAL_API_HOSTS.includes(window.location.hostname)
   ? window.location.hostname
-  : "localhost";
-const BASE_URL = `http://${API_HOST}:3001`;
+    : null;
+const BASE_URL = API_HOST ? `http://${API_HOST}:3001` : "/api";
 
 function apiFetch(url, options = {}) {
   return window.fetch(url, {
