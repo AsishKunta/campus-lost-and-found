@@ -68,12 +68,14 @@
     let requestInFlight = false;
 
     function setFeedback(message, type = "error") {
+      if (!feedback) return;
       feedback.textContent = message;
       feedback.className = `auth-feedback ${type}`;
       feedback.focus();
     }
 
     function clearFeedback() {
+      if (!feedback) return;
       feedback.textContent = "";
       feedback.className = "auth-feedback hidden";
     }
@@ -81,27 +83,32 @@
     function setMode(mode) {
       activeMode = mode;
       clearFeedback();
-      loginForm.classList.toggle("hidden", mode !== "login");
-      signupForm.classList.toggle("hidden", mode !== "signup");
-      forgotPasswordForm.classList.toggle("hidden", mode !== "forgot");
-      loginTab.classList.toggle("active", mode === "login");
-      signupTab.classList.toggle("active", mode === "signup");
-      loginTab.setAttribute("aria-selected", String(mode === "login"));
-      signupTab.setAttribute("aria-selected", String(mode === "signup"));
-      formTitle.textContent = mode === "login"
-        ? "Welcome back"
-        : mode === "signup" ? "Create your account" : "Reset your password";
-      formDescription.textContent = mode === "login"
-        ? "Sign in to continue to Campus Recovery."
-        : mode === "signup"
-          ? "Create a development account for Campus Recovery."
-          : "Enter your email and we’ll send a secure, single-use reset link.";
+      loginForm?.classList.toggle("hidden", mode !== "login");
+      signupForm?.classList.toggle("hidden", mode !== "signup");
+      forgotPasswordForm?.classList.toggle("hidden", mode !== "forgot");
+      loginTab?.classList.toggle("active", mode === "login");
+      signupTab?.classList.toggle("active", mode === "signup");
+      loginTab?.setAttribute("aria-selected", String(mode === "login"));
+      signupTab?.setAttribute("aria-selected", String(mode === "signup"));
+      if (formTitle) {
+        formTitle.textContent = mode === "login"
+          ? "Welcome back"
+          : mode === "signup" ? "Create your account" : "Reset your password";
+      }
+      if (formDescription) {
+        formDescription.textContent = mode === "login"
+          ? "Sign in to continue to Campus Recovery."
+          : mode === "signup"
+            ? "Create a development account for Campus Recovery."
+            : "Enter your email and we’ll send a secure, single-use reset link.";
+      }
       document.title = `${mode === "login" ? "Sign In" : mode === "signup" ? "Sign Up" : "Forgot Password"} | Campus Lost & Found`;
     }
 
     function setLoading(form, loading) {
       requestInFlight = loading;
       const button = form.querySelector('[type="submit"]');
+      if (!button) return;
       button.disabled = loading;
       button.textContent = loading
         ? (activeMode === "login" ? "Signing in…" : activeMode === "signup" ? "Creating account…" : "Sending…")
@@ -128,17 +135,21 @@
       try { return await response.json(); } catch (_) { return {}; }
     }
 
-    loginTab.addEventListener("click", () => setMode("login"));
-    signupTab.addEventListener("click", () => setMode("signup"));
-    forgotPasswordLink.addEventListener("click", () => {
-      document.getElementById("forgotPasswordEmail").value = document.getElementById("loginEmail").value;
+    loginTab?.addEventListener("click", () => setMode("login"));
+    signupTab?.addEventListener("click", () => setMode("signup"));
+    forgotPasswordLink?.addEventListener("click", () => {
+      const forgotPasswordEmail = document.getElementById("forgotPasswordEmail");
+      const loginEmail = document.getElementById("loginEmail");
+      if (!forgotPasswordEmail) return;
+      forgotPasswordEmail.value = loginEmail?.value || "";
       setMode("forgot");
-      document.getElementById("forgotPasswordEmail").focus();
+      forgotPasswordEmail.focus();
     });
-    backToLogin.addEventListener("click", () => setMode("login"));
+    backToLogin?.addEventListener("click", () => setMode("login"));
     document.querySelectorAll("[data-password-target]").forEach((button) => {
       button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.passwordTarget);
+        if (!input) return;
         const showing = input.type === "text";
         input.type = showing ? "password" : "text";
         button.textContent = showing ? "Show" : "Hide";
@@ -146,7 +157,7 @@
       });
     });
 
-    signupForm.addEventListener("submit", async (event) => {
+    signupForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (requestInFlight) return;
       const input = {
@@ -184,7 +195,7 @@
       }
     });
 
-    loginForm.addEventListener("submit", async (event) => {
+    loginForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (requestInFlight) return;
       const input = {
@@ -217,7 +228,7 @@
       }
     });
 
-    forgotPasswordForm.addEventListener("submit", async (event) => {
+    forgotPasswordForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (requestInFlight) return;
       const input = { email: normalizeEmail(document.getElementById("forgotPasswordEmail").value) };

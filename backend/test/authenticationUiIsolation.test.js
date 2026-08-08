@@ -45,3 +45,19 @@ test("sign-in and sign-up expose accessible responsive controls", () => {
   assert.match(css, /@media \(max-width: 820px\)/);
   assert.match(css, /:focus-visible/);
 });
+
+test("login DOM initialization selectors match the page and runtime config cannot corrupt parsing", () => {
+  const source = fs.readFileSync(path.join(root, "js/login.js"), "utf8");
+  const selectorIds = [...source.matchAll(/getElementById\("([^"]+)"\)/g)].map((match) => match[1]);
+
+  for (const id of new Set(selectorIds)) {
+    assert.match(html, new RegExp(`id=["']${id}["']`), `login.html must provide #${id}`);
+  }
+
+  assert.match(html, /document\.write\('<script src="\/api\/runtime-config\.js"><\\\/script>'\)/);
+  assert.doesNotMatch(html, /<\\\\\/script>/);
+  assert.match(source, /loginTab\?\.addEventListener/);
+  assert.match(source, /signupTab\?\.addEventListener/);
+  assert.match(source, /forgotPasswordLink\?\.addEventListener/);
+  assert.match(source, /backToLogin\?\.addEventListener/);
+});
