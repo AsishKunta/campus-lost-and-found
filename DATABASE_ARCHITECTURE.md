@@ -2,10 +2,10 @@
 
 ## Audit status
 
-**Audited:** 2026-08-02 CDT  
+**Audited:** 2026-08-06 CDT
 **Database:** PostgreSQL, schema `public`  
-**Health:** Healthy and ready for Phase 6 planning; no corrective migration required  
-**Applied migrations:** 001–006, checksum-aligned with the repository
+**Health:** Healthy; secure password recovery added through a forward migration
+**Applied migrations:** 001–007, checksum-aligned with the repository
 
 This document records the current implementation. Future recommendations are
 separated near the end and are not implemented Phase 6 features.
@@ -19,6 +19,7 @@ personal record value was read into this audit report.
 users
 ├── user_roles
 ├── sessions
+├── password_reset_tokens
 ├── reports ── report_images
 │   ├── report_matches (Lost ↔ Found)
 │   └── notifications
@@ -82,6 +83,18 @@ users/user_roles/sessions
 - **Application usage:** login, `/auth/me`, middleware authentication, logout.
 - **Lifecycle:** Inserted on login, touched during validation, revoked on logout,
   and treated as inactive after expiration.
+
+### `password_reset_tokens`
+
+- **Purpose:** Expiring, single-use password recovery authorization.
+- **Primary key:** UUID `id`.
+- **Important columns:** unique SHA-256 `token_hash`, `expires_at`, `used_at`,
+  `created_at`, and optional request IP.
+- **Foreign keys:** `user_id → users.id ON DELETE CASCADE`.
+- **Referenced by:** No product table.
+- **Application usage:** forgot-password delivery and transactional password reset.
+- **Lifecycle:** Previous unused tokens are consumed when a new request is made;
+  successful reset marks one used and revokes every active user session.
 
 ### `reports`
 
@@ -326,7 +339,7 @@ None found.
 
 ### RECOMMENDED
 
-- Keep this database map current and keep migrations 001–006 immutable.
+- Keep this database map current and keep migrations 001–007 immutable.
 - Remove sensitive request-body/insert-value logging from report creation before
   production observability work; this is an application logging concern, not a
   schema migration.
@@ -370,6 +383,6 @@ None found.
   may later need normalized category/location vocabularies and explicit event
   semantics.
 
-**Conclusion:** The database is understandable, internally consistent, and safe
-to build on. No migration was created because current evidence does not show a
-critical or recommended structural defect that outweighs regression risk.
+**Conclusion:** The database is understandable and internally consistent.
+Migration 007 was added specifically for secure password recovery; no unrelated
+corrective or speculative schema change was introduced.

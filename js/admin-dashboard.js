@@ -16,7 +16,8 @@
   var _adSearchRequest = null;
   var _adSmartSearchActive = false;
   var _adLoadPromise = null;
-  var ADMIN_CACHE_KEY = 'lf_admin_reports_cache_v2';
+  var ADMIN_CACHE_KEY = 'lf_admin_reports_cache_v3';
+  function adminCacheKey() { return ADMIN_CACHE_KEY + ':' + getCurrentUser().id; }
 
   function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -173,7 +174,7 @@
     })
     .then(function (res) { return res.ok ? res.json() : res.json().then(function (e) { throw e; }); })
     .then(function () {
-      localStorage.removeItem(ADMIN_CACHE_KEY);
+      localStorage.removeItem(adminCacheKey());
       if (typeof showSuccessToast === 'function') showSuccessToast('Claim rejected.');
       hideDetailModal(); loadData();
     })
@@ -280,15 +281,16 @@
 
   async function performAdminLoad() {
     _adSmartSearchActive = false;
-    var raw = localStorage.getItem(ADMIN_CACHE_KEY);
+    var cacheKey = adminCacheKey();
+    var raw = localStorage.getItem(cacheKey);
     if (raw) {
       try { _adReports = JSON.parse(raw); updateStats(_adReports); renderAdminCards(); }
-      catch (_e) { localStorage.removeItem(ADMIN_CACHE_KEY); }
+      catch (_e) { localStorage.removeItem(cacheKey); }
     } else { showSkeletonCards(); }
 
     try {
       var results = await Promise.allSettled([
-        apiFetchWithTimeout(BASE_URL + '/reports'),
+        apiFetchWithTimeout(BASE_URL + '/reports/active-found'),
         apiFetchWithTimeout(BASE_URL + '/claims'),
       ]);
       var reportsResult = results[0];
@@ -304,7 +306,7 @@
       }
       updateStats(_adReports);
       renderAdminCards();
-      localStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(_adReports));
+      localStorage.setItem(cacheKey, JSON.stringify(_adReports));
     } catch (err) {
       console.error('[admin-dashboard] loadData:', err);
       if (!raw) {
@@ -325,9 +327,9 @@
     var eyebrow = document.getElementById('dashboardEyebrow');
     var intro = document.getElementById('dashboardIntro');
     if (eyebrow) eyebrow.textContent = 'Admin workspace';
-    if (intro) intro.textContent = 'Monitor open reports and move recovery cases through review, return, and closure.';
-    var titles = ['Open Reports', 'Claims Awaiting Review', 'Verification Required', 'Return / Closure Queue'];
-    var contexts = ['Active Lost and Found records', 'Pending or under review', 'Waiting for student proof', 'Approved or returned'];
+    if (intro) intro.textContent = 'Monitor active Found Reports and move recovery cases through review, return, and closure.';
+    var titles = ['Active Found Reports', 'Claims Awaiting Review', 'Verification Required', 'Return / Closure Queue'];
+    var contexts = ['Current database inventory', 'Pending or under review', 'Waiting for student proof', 'Approved or returned'];
     titles.forEach(function (label, index) {
       var title = document.getElementById('metricTitle' + (index + 1));
       var context = document.getElementById('metricContext' + (index + 1));

@@ -185,7 +185,7 @@ remain intact.
 ## Phase 6 Database Architecture Preparation
 
 The complete PostgreSQL implementation is now mapped in
-`DATABASE_ARCHITECTURE.md`: 12 public tables, migrations 001–006, canonical
+`DATABASE_ARCHITECTURE.md`: 13 public tables, migrations 001–007, canonical
 identity/role ownership, report/match/claim relationships, lifecycle history,
 notifications/messages, constraints, indexes, legacy compatibility, and future
 readiness. Live aggregate checks and a fresh database run found no structural
@@ -262,3 +262,11 @@ terminates loading with data, an intentional empty/cached state, or retry.
 Student/Admin first entry and refresh were verified through HTTP on both local
 origins. Performance is healthy at the current dataset size; no database or API
 architecture change was warranted.
+
+## Authentication completion
+
+The application now opens at Sign In, validates protected UI before revealing
+it, supports secure email-delivered password reset, and uses backend session
+roles as the only authorization authority. New Students see only relevant
+activity or an empty state; Admins immediately receive all active Found inventory
+from PostgreSQL. Migration 007 is the sole schema addition.

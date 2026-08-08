@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=dashboard.html">
-  <title>Dashboard - Lost & Found</title>
+  <meta http-equiv="refresh" content="0; url=login.html">
+  <title>Sign In - Lost & Found</title>
   <script>
-    window.location.replace("dashboard.html");
+    window.location.replace("login.html");
   </script>
   <!-- Link to CSS -->
   <link rel="stylesheet" href="css/style.css">
@@ -35,8 +35,7 @@
 
   <!-- Main Section -->
   <main>
-    <h2>Opening Campus Lost &amp; Found…</h2>
-    <p role="status">Checking the local development mode.</p>
+    <h2>Opening secure sign in…</h2>
   </main>
 
   <!-- Footer -->
@@ -44,17 +43,5 @@
     <p>© 2025 Lost & Found</p>
   </footer>
 
-  <!-- Scripts -->
-  <script src="./js/common.js?v=dev-auth"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", async () => {
-      try {
-        const response = await window.apiFetch(`${window.BASE_URL}/auth/me`);
-        window.location.replace(response.ok ? "dashboard.html" : "login.html");
-      } catch (_) {
-        window.location.replace("login.html");
-      }
-    });
-  </script>
 </body>
 </html>

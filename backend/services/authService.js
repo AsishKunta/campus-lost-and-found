@@ -43,20 +43,24 @@ function validateRegistrationInput({ name, email, password }) {
   if (normalizedEmail.length > 254 || !EMAIL_PATTERN.test(normalizedEmail)) {
     throw new AuthError("Enter a valid email address.");
   }
-  if (passwordValue.length < MIN_PASSWORD_LENGTH) {
-    throw new AuthError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`
-    );
-  }
-  if (Buffer.byteLength(passwordValue, "utf8") > MAX_PASSWORD_BYTES) {
-    throw new AuthError("Password is too long.");
-  }
+  validatePassword(passwordValue);
 
   return {
     name: normalizedName,
     email: normalizedEmail,
     password: passwordValue,
   };
+}
+
+function validatePassword(value) {
+  const password = String(value || "");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new AuthError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) {
+    throw new AuthError("Password is too long.");
+  }
+  return password;
 }
 
 function validateLoginInput({ email, password }) {
@@ -296,6 +300,7 @@ module.exports = {
   registerUser,
   revokeSession,
   validateLoginInput,
+  validatePassword,
   validateRegistrationInput,
   verifyCredentials,
   updatePreferredWorkspace,

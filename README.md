@@ -553,3 +553,33 @@ and always leave loading through success, cached-warning, or retryable-error.
 Local HTTP verification remains supported at `http://localhost:5500` and
 `http://127.0.0.1:5500`. Use the same hostname for frontend and API during a
 browser session so development cookies remain same-site.
+
+### Authentication entry, password recovery, and dashboard scope
+
+The public root opens `login.html` directly. Protected Dashboard markup stays
+hidden until `GET /auth/me` validates the HTTP-only session. Login uses backend
+roles/workspace and never derives authorization from email or browser state.
+
+Recovery uses `POST /auth/forgot-password` and `POST /auth/reset-password`.
+Tokens are random, SHA-256-hashed at rest, expire after 30 minutes by default,
+are single-use, and revoke all active sessions after a bcrypt password change.
+Existing and unknown accounts receive identical request responses.
+
+To enable the optional Resend delivery adapter on Render:
+
+```text
+PASSWORD_RESET_EMAIL_PROVIDER=resend
+PASSWORD_RESET_FRONTEND_URL=https://your-vercel-domain.example
+PASSWORD_RESET_FROM_EMAIL=Campus Recovery <recovery@your-verified-domain.example>
+RESEND_API_KEY=secret-provider-key
+```
+
+Vercel requires `BACKEND_API_URL=https://your-render-service.example`. Render
+must include the exact Vercel origin in `FRONTEND_ORIGINS`. Separate default
+Vercel/Render sites require `SESSION_COOKIE_SAME_SITE=none`; production cookies
+remain Secure and HTTP-only. Prefer same-site custom domains when possible.
+
+Student discovery includes their own active Found Reports, Found Reports matched
+to their Lost Reports, and Found Reports they claimed. New Students see a clean
+empty state. Admins load all active Found inventory through the Admin-only
+`GET /reports/active-found` endpoint.

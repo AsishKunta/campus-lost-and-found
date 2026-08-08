@@ -16,6 +16,10 @@ const {
 } = require("../utils/sessionCookie");
 const { logError } = require("../utils/safeLogger");
 const { createLoginAttemptLimiter } = require("../services/loginAttemptLimiter");
+const { createFixedWindowRateLimiter } = require("../services/fixedWindowRateLimiter");
+const { getPasswordResetConfig } = require("../config/passwordReset");
+const { createPasswordResetDelivery } = require("../services/passwordResetDeliveryService");
+const { requestPasswordReset, resetPassword } = require("../services/passwordResetService");
 
 function requestMetadata(req) {
   return {
@@ -61,6 +65,13 @@ function createAuthController(dependencies = {}) {
     maxAttempts: config.loginRateLimitMax,
     windowMs: config.loginRateLimitWindowMs,
   });
+  const resetConfig = dependencies.passwordResetConfig || getPasswordResetConfig();
+  const resetLimiter = dependencies.passwordResetLimiter || createFixedWindowRateLimiter({
+    maxRequests: resetConfig.rateLimitMax,
+    windowMs: resetConfig.rateLimitWindowMs,
+  });
+  const deliverPasswordReset = dependencies.deliverPasswordReset ||
+    createPasswordResetDelivery(resetConfig);
 
   async function signup(req, res) {
     try {
@@ -131,6 +142,39 @@ function createAuthController(dependencies = {}) {
     }
   }
 
+  async function forgotPassword(req, res) {
+    const generic = {
+      message: "If an account exists for that email, a password reset link will be sent.",
+    };
+    const limit = resetLimiter.consume(`${req.ip || "unknown"}:${String(req.body?.email || "").trim().toLowerCase()}`);
+    if (!limit.allowed) {
+      res.set?.("Retry-After", String(limit.retryAfterSeconds));
+      return res.status(429).json({
+        error: "Too many password reset requests. Please try again later.",
+        code: "PASSWORD_RESET_RATE_LIMITED",
+      });
+    }
+    try {
+      await requestPasswordReset(database, req.body?.email, {
+        ttlMs: resetConfig.ttlMs,
+        ipAddress: req.ip || null,
+        deliver: deliverPasswordReset,
+      });
+    } catch (error) {
+      logError("authentication.password_reset_delivery_failed", error);
+    }
+    return res.status(202).json(generic);
+  }
+
+  async function completePasswordReset(req, res) {
+    try {
+      const result = await resetPassword(database, passwordHasher, req.body || {});
+      return res.status(200).json(result);
+    } catch (error) {
+      return sendAuthError(res, error);
+    }
+  }
+
   function me(req, res) {
     return res.status(200).json({
       user: req.user,
@@ -170,7 +214,17 @@ function createAuthController(dependencies = {}) {
     });
   }
 
-  return { developmentStatus, getProfile, login, logout, me, setWorkspace, signup };
+  return {
+    completePasswordReset,
+    developmentStatus,
+    forgotPassword,
+    getProfile,
+    login,
+    logout,
+    me,
+    setWorkspace,
+    signup,
+  };
 }
 
 module.exports = {

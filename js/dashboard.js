@@ -182,7 +182,10 @@ function updateStats(reports) {
 /* -------------------------
    Load Reports from API (cache-first)
 ------------------------- */
-const REPORTS_CACHE_KEY = "lf_reports_cache_v2";
+const REPORTS_CACHE_KEY = "lf_reports_cache_v3";
+function reportsCacheKey() {
+  return `${REPORTS_CACHE_KEY}:${getCurrentUser().id}`;
+}
 
 function showSkeletonCards() {
   const grid = document.getElementById("reportCards");
@@ -209,14 +212,15 @@ function loadReports() {
 async function performDashboardLoad() {
   smartSearchActive = false;
   // ── Step 1: render cached data instantly if available ──────────────────
-  const raw = localStorage.getItem(REPORTS_CACHE_KEY);
+  const cacheKey = reportsCacheKey();
+  const raw = localStorage.getItem(cacheKey);
   if (raw) {
     try {
       allReports = JSON.parse(raw);
       updateStats(allReports);
       renderCards();
     } catch (_) {
-      localStorage.removeItem(REPORTS_CACHE_KEY);
+      localStorage.removeItem(cacheKey);
     }
   } else {
     // No cache yet — show skeleton so screen isn't blank
@@ -245,7 +249,7 @@ async function performDashboardLoad() {
     updateStats(allReports);
     renderCards();
 
-    localStorage.setItem(REPORTS_CACHE_KEY, JSON.stringify(fresh));
+    localStorage.setItem(cacheKey, JSON.stringify(fresh));
   } catch (err) {
     console.error("Error fetching reports:", err);
     if (!raw) {
@@ -333,8 +337,10 @@ function renderCards() {
     grid.innerHTML = `
       <div class="rc-empty">
         <i class="fas fa-box-open"></i>
-        <p>No reports found</p>
+        <p>${allReports.length === 0 ? "No reports yet." : "No reports found"}</p>
+        ${allReports.length === 0 ? '<button type="button" class="claim-btn" id="emptyReportAction">Report an Item</button>' : ""}
       </div>`;
+    document.getElementById("emptyReportAction")?.addEventListener("click", () => navigate("report"), { once: true });
     return;
   }
 
@@ -485,7 +491,7 @@ async function closeLostReport(reportId) {
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) return showErrorToast(body.error || "Report could not be closed.");
-  localStorage.removeItem(REPORTS_CACHE_KEY);
+  localStorage.removeItem(reportsCacheKey());
   showSuccessToast("Lost Report closed. Pending claims were cancelled.");
   await loadReports();
 }

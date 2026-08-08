@@ -44,13 +44,21 @@
     return "";
   }
 
-  const exported = { detectDemoWorkspace, normalizeEmail, validateEmail, validateLogin, validateSignup };
+  function validateForgotPassword({ email }) {
+    const normalized = normalizeEmail(email);
+    return !normalized || !EMAIL_PATTERN.test(normalized) ? "Enter a valid email address." : "";
+  }
+
+  const exported = { detectDemoWorkspace, normalizeEmail, validateEmail, validateForgotPassword, validateLogin, validateSignup };
   if (typeof module !== "undefined" && module.exports) module.exports = exported;
   if (typeof document === "undefined") return;
 
   document.addEventListener("DOMContentLoaded", async function initializeAuthUi() {
     const loginForm = document.getElementById("loginForm");
     const signupForm = document.getElementById("signupForm");
+    const forgotPasswordForm = document.getElementById("forgotPasswordForm");
+    const forgotPasswordLink = document.getElementById("forgotPasswordLink");
+    const backToLogin = document.getElementById("backToLogin");
     const loginTab = document.getElementById("loginTab");
     const signupTab = document.getElementById("signupTab");
     const formTitle = document.getElementById("formTitle");
@@ -75,15 +83,20 @@
       clearFeedback();
       loginForm.classList.toggle("hidden", mode !== "login");
       signupForm.classList.toggle("hidden", mode !== "signup");
+      forgotPasswordForm.classList.toggle("hidden", mode !== "forgot");
       loginTab.classList.toggle("active", mode === "login");
       signupTab.classList.toggle("active", mode === "signup");
       loginTab.setAttribute("aria-selected", String(mode === "login"));
       signupTab.setAttribute("aria-selected", String(mode === "signup"));
-      formTitle.textContent = mode === "login" ? "Welcome back" : "Create your account";
+      formTitle.textContent = mode === "login"
+        ? "Welcome back"
+        : mode === "signup" ? "Create your account" : "Reset your password";
       formDescription.textContent = mode === "login"
         ? "Sign in to continue to Campus Recovery."
-        : "Create a development account for Campus Recovery.";
-      document.title = `${mode === "login" ? "Sign In" : "Sign Up"} | Campus Lost & Found`;
+        : mode === "signup"
+          ? "Create a development account for Campus Recovery."
+          : "Enter your email and we’ll send a secure, single-use reset link.";
+      document.title = `${mode === "login" ? "Sign In" : mode === "signup" ? "Sign Up" : "Forgot Password"} | Campus Lost & Found`;
     }
 
     function setLoading(form, loading) {
@@ -91,8 +104,8 @@
       const button = form.querySelector('[type="submit"]');
       button.disabled = loading;
       button.textContent = loading
-        ? (activeMode === "login" ? "Signing in…" : "Creating account…")
-        : (activeMode === "login" ? "Sign In" : "Create Account");
+        ? (activeMode === "login" ? "Signing in…" : activeMode === "signup" ? "Creating account…" : "Sending…")
+        : (activeMode === "login" ? "Sign In" : activeMode === "signup" ? "Create Account" : "Send Reset Link");
       form.setAttribute("aria-busy", String(loading));
     }
 
@@ -117,6 +130,12 @@
 
     loginTab.addEventListener("click", () => setMode("login"));
     signupTab.addEventListener("click", () => setMode("signup"));
+    forgotPasswordLink.addEventListener("click", () => {
+      document.getElementById("forgotPasswordEmail").value = document.getElementById("loginEmail").value;
+      setMode("forgot");
+      document.getElementById("forgotPasswordEmail").focus();
+    });
+    backToLogin.addEventListener("click", () => setMode("login"));
     document.querySelectorAll("[data-password-target]").forEach((button) => {
       button.addEventListener("click", () => {
         const input = document.getElementById(button.dataset.passwordTarget);
@@ -186,20 +205,8 @@
         });
         const data = await parseResponse(response);
         if (!response.ok) throw new Error(data.error || "Invalid email or password.");
-        const desiredWorkspace = detectDemoWorkspace(input.email).toLowerCase();
-        if (!Array.isArray(data.user?.roles) || !data.user.roles.includes(desiredWorkspace)) {
-          await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/logout`, { method: "POST" });
-          throw new Error("This account is not assigned to the expected development workspace.");
-        }
-        if (data.user.preferredWorkspace !== desiredWorkspace) {
-          const workspaceResponse = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/workspace`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ workspace: desiredWorkspace }),
-          });
-          const workspaceData = await parseResponse(workspaceResponse);
-          if (!workspaceResponse.ok) throw new Error(workspaceData.error || "Workspace could not be selected.");
-          data.user = workspaceData.user;
+        if (!data.user || !Array.isArray(data.user.roles)) {
+          throw new Error("The server did not return an authorized workspace.");
         }
         cacheUser(data.user);
         globalScope.location.replace("dashboard.html#dashboard");
@@ -207,6 +214,31 @@
         setFeedback(error.message === "Failed to fetch" ? "Cannot reach the authentication server. Please try again when it is running." : error.message);
       } finally {
         setLoading(loginForm, false);
+      }
+    });
+
+    forgotPasswordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (requestInFlight) return;
+      const input = { email: normalizeEmail(document.getElementById("forgotPasswordEmail").value) };
+      const validationError = validateForgotPassword(input);
+      if (validationError) return setFeedback(validationError);
+      setLoading(forgotPasswordForm, true);
+      clearFeedback();
+      try {
+        const response = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/forgot-password`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const data = await parseResponse(response);
+        if (!response.ok) throw new Error(data.error || "Password reset could not be requested.");
+        forgotPasswordForm.reset();
+        setFeedback(data.message || "If an account exists for that email, a password reset link will be sent.", "success");
+      } catch (error) {
+        setFeedback(error.message === "Failed to fetch" ? "Cannot reach the authentication server." : error.message);
+      } finally {
+        setLoading(forgotPasswordForm, false);
       }
     });
 

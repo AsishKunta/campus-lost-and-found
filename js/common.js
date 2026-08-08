@@ -16,7 +16,7 @@ function cacheAuthenticatedUser(user) {
 window.cacheAuthenticatedUser = cacheAuthenticatedUser;
 
 async function requireLogin() {
-  const publicPages = ["login.html", "index.html", "detail.html", "matches.html"];
+  const publicPages = ["login.html", "index.html", "reset-password.html", "detail.html", "matches.html"];
   const currentPage = window.location.pathname.split("/").pop();
 
   if (publicPages.includes(currentPage)) return true;
@@ -27,6 +27,7 @@ async function requireLogin() {
     const data = await response.json();
     if (data.user?.developmentBypass) throw new Error("Interactive authentication required");
     cacheAuthenticatedUser(data.user);
+    document.documentElement.classList.remove("auth-pending");
     return true;
   } catch (_) {
     clearBrowserIdentity();
@@ -53,7 +54,8 @@ async function logout() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   window.authReady = requireLogin();
-  await window.authReady;
+  const authenticated = await window.authReady;
+  if (!authenticated) return;
 
   // Set role label dynamically
   const roleLabel = document.getElementById("avatarRoleLabel");
@@ -130,12 +132,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 // Keep local frontend/API requests on the same loopback hostname so the
 // HTTP-only SameSite session cookie survives navigation and refresh.
 const LOCAL_API_HOSTS = ["localhost", "127.0.0.1"];
-const API_HOST = LOCAL_API_HOSTS.includes(window.location.hostname)
-  ? window.location.hostname
-    : null;
-const BASE_URL = API_HOST ? `http://${API_HOST}:3001` : "/api";
+const IS_LOCAL_FRONTEND = LOCAL_API_HOSTS.includes(window.location.hostname);
+const BASE_URL = IS_LOCAL_FRONTEND
+  ? `http://${window.location.hostname}:3001`
+  : String(window.CAMPUS_API_BASE_URL || "").replace(/\/$/, "");
 
 function apiFetch(url, options = {}) {
+  if (!BASE_URL && String(url || "").startsWith("/")) {
+    return Promise.reject(new Error("The production API URL is not configured."));
+  }
   return window.fetch(url, {
     ...options,
     credentials: "include",

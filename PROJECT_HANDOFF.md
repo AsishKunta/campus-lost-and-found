@@ -1461,8 +1461,8 @@ coverage is in `backend/test/authorizationHardening.test.js`; full suite 104/104
 2026-08-02 readiness audit. The live ledger and repository checksums match for
 migrations 001–006; a fresh temporary database applied all six successfully.
 No corrective migration was created because aggregate integrity checks found
-no critical structural defect. Preserve migrations 001–006 exactly; the next
-schema change must be a forward migration numbered 007 or later.
+no critical structural defect. Preserve migrations 001–007 exactly; the next
+schema change must be a forward migration numbered 008 or later.
 
 ### Pre-demo dashboard lifecycle handoff
 
@@ -1476,3 +1476,18 @@ unconditional fresh render coverage in `backend/test/preDemoStability.test.js`.
 No current database bottleneck was measured. Monitor the per-recipient Admin
 notification loop and per-match persistence loop only as counts grow; do not
 batch or add indexes without evidence.
+
+### Authentication/recovery completion handoff
+
+Migration 007 owns `password_reset_tokens`. `passwordResetService` owns token
+hash/expiration/consumption, password replacement, and session revocation;
+`passwordResetDeliveryService` owns optional Resend delivery. Never return or
+log a raw token.
+
+Root routes to `login.html`. `dashboard.html` starts `auth-pending`; only
+successful session restoration reveals it. Login caches the canonical backend
+user and does not select workspace from email. Student discovery is activity-
+scoped; Admin uses protected `/reports/active-found`; caches include user ID.
+
+Apply migration 007 to Supabase. Configure Vercel `BACKEND_API_URL`, Render
+`FRONTEND_ORIGINS`, and the documented recovery-email variables before release.

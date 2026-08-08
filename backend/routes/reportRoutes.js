@@ -31,6 +31,7 @@ const {
   getMyLostReports,
   getStudentLostReports,
   searchReports,
+  getActiveFoundReports,
 } = require("../controllers/reportController");
 
 router.use(authenticate);
@@ -38,6 +39,7 @@ router.get("/",      getReports);
 router.get("/discover", requireRole("student"), discoverFoundReports);
 router.get("/mine", requireRole("student"), getMyLostReports);
 router.get("/student-lost", requireRole("admin"), getStudentLostReports);
+router.get("/active-found", requireRole("admin"), getActiveFoundReports);
 router.get("/search", searchReports);
 router.get("/:id/matches", requireRole("student"), getPotentialMatches);
 router.post("/:id/close", requireRole("student"), closeLostReport);

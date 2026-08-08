@@ -17,7 +17,7 @@ test("Student Dashboard first load settles reports and claims independently", ()
 
 test("Admin Dashboard first load settles reports and claims independently", () => {
   const source = read("js/admin-dashboard.js");
-  assert.match(source, /Promise\.allSettled\(\[[\s\S]*apiFetchWithTimeout\(BASE_URL \+ '\/reports'\)/);
+  assert.match(source, /Promise\.allSettled\(\[[\s\S]*apiFetchWithTimeout\(BASE_URL \+ '\/reports\/active-found'\)/);
   assert.match(source, /reportsResult\.status !== 'fulfilled'/);
   assert.match(source, /claimsResult\.status === 'fulfilled'/);
   assert.match(source, /renderAdminCards\(\)/);

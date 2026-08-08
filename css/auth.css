@@ -98,3 +98,18 @@ body.auth-page {
 @media (prefers-reduced-motion: reduce) {
   .auth-submit, .auth-secondary { transition: none; }
 }
+.auth-text-action {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--primary, #176b4d);
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-text-action:hover { color: #0f5138; }
+.auth-text-action:focus-visible { outline: 3px solid rgba(23, 107, 77, .25); outline-offset: 3px; }

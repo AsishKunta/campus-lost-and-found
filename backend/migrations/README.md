@@ -45,3 +45,5 @@ Current migrations:
    with compatibility backfill from the legacy primary image.
 6. `006_manual_claim_entry.sql` — report-independent manual claims with
    validated item context and an Admin review-queue index.
+7. `007_password_recovery.sql` — expiring single-use password reset token hashes
+   with active-user and expiration indexes.

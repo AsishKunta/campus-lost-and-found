@@ -808,3 +808,29 @@ authoritative handoff:
 - Dashboard SQL completed in 0.106 ms on 23 reports. No bottleneck, index,
   migration, cache layer, or unrelated optimization was justified.
 - Focused suite: 25 passed. Complete suite: **154 passed, 0 failed**.
+
+## 2026-08-06 08:30 CDT — Authentication Completion & Role-Scoped Dashboards
+
+### Added
+
+- Migration 007 and secure single-use password recovery.
+- Forgot Password and Reset Password UI.
+- Optional server-side Resend delivery and Vercel runtime API configuration.
+- Admin-only active Found inventory endpoint.
+
+### Changed
+
+- Public root routes directly to Sign In; protected Dashboard stays hidden until
+  session validation completes.
+- Login trusts backend roles rather than frontend email/workspace inference.
+- Student discovery is activity-scoped with a clean new-account empty state.
+- Dashboard caches are isolated by authenticated account.
+
+### Verified
+
+- Existing/missing recovery requests return identical 202 messages.
+- Student empty response 200; Student Admin request 403; unauthenticated 401.
+- Admin endpoint count exactly matched PostgreSQL active Found count.
+- Browser root, protected redirect, recovery states, Student empty state, and
+  Admin inventory passed without console errors.
+- Migration ledger 7/7; full suite **162 passed, 0 failed**.

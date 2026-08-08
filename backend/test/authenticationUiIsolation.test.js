@@ -29,7 +29,8 @@ test("authentication page integrates through one canonical user cache and dashbo
   const source = fs.readFileSync(path.join(root, "js/login.js"), "utf8");
   assert.match(source, /cacheAuthenticatedUser/);
   assert.match(source, /location\.replace\("dashboard\.html#dashboard"\)/);
-  assert.match(source, /auth\/workspace/);
+  assert.doesNotMatch(source, /auth\/workspace/);
+  assert.match(source, /Array\.isArray\(data\.user\.roles\)/);
   assert.doesNotMatch(html, /Dashboard integration is intentionally disabled/);
 });
 

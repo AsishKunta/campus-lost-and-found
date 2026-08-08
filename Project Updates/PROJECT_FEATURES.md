@@ -2085,3 +2085,54 @@ workspace routing, metrics, discovery, claims, cached state, and retry UI.
 
 Re-measure with production-sized data. Batch Admin notification inserts or
 match persistence only after observed growth demonstrates a bottleneck.
+
+## Password Recovery and Role-Scoped Entry
+
+### Purpose
+
+Provide safe account recovery, eliminate protected-content flash, and ensure
+each workspace receives only its server-authorized Dashboard data.
+
+### How it works and user workflow
+
+The public URL opens Sign In. Forgot Password accepts an email and always gives
+the same response. A delivered single-use link opens Reset Password; the user
+enters and confirms a new password, then returns to Sign In. Student login opens
+their activity-scoped Dashboard; Admin login opens active Found inventory.
+
+### Backend logic
+
+`POST /auth/forgot-password` is rate-limited, generates a 256-bit token, stores
+only its SHA-256 hash, and passes the raw value only to the delivery adapter.
+`POST /auth/reset-password` locks a valid unused record, hashes the password with
+bcrypt, marks the token used, and revokes all sessions transactionally.
+
+### Frontend interaction
+
+Login contains a subtle Forgot Password state. `reset-password.html` validates
+confirmation and handles invalid links. Dashboard markup is hidden until
+`/auth/me` succeeds. Empty Students receive a Report an Item action.
+
+### Database involvement
+
+Migration 007 creates `password_reset_tokens` related to `users`, with expiry,
+use timestamp, request IP, uniqueness, and two partial indexes.
+
+### API endpoints
+
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `GET /reports/active-found` (Admin only)
+- Updated `GET /reports/discover` Student scope
+
+### Files involved and connected features
+
+Auth controller/service/config/routes, migration 007, Resend delivery service,
+login/reset UI, shared session guard, Student/Admin Dashboard modules, Vercel
+runtime configuration, and focused security tests. It connects existing users,
+sessions, roles, reports, matches, and claims without changing their lifecycles.
+
+### Future improvements
+
+Configure a verified sending domain and monitor delivery/bounce telemetry.
+Consider a shared rate-limit store before multi-instance backend scaling.

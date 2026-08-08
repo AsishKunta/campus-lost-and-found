@@ -1,13 +1,10 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://lost-found-app-gc0r.onrender.com/:path*"
-    },
+  "redirects": [
     {
       "source": "/",
-      "destination": "/dashboard.html"
+      "destination": "/login.html",
+      "permanent": false
     }
   ]
 }

@@ -643,3 +643,14 @@ A milestone is complete only when all applicable items are true:
 - Cached equality must not suppress rendering of newly loaded dependent state.
 - Performance changes require measurements; do not add indexes or cache layers
   based only on speculation.
+
+## Account-recovery standard
+
+- Recovery requests must not reveal account existence.
+- Store only cryptographic token hashes; tokens expire and are single-use.
+- Successful reset revokes existing sessions.
+- Raw tokens may enter only a server delivery adapter and must never be logged,
+  placed in frontend storage, or returned by an API.
+- Disabled delivery must not expose a development token.
+- Protected UI stays hidden until server session validation succeeds.
+- Browser role state is presentation only; authorization remains server-derived.

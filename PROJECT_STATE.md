@@ -791,3 +791,16 @@ hide the treatment. The full suite passes 81 tests.
   local 23-report/9-claim fixture. Dashboard SQL executed in 0.106 ms; no
   index, migration, cache, or API redesign was justified.
 - Added seven focused stability regressions. Full suite: **154 passed, 0 failed**.
+
+## Authentication Completion & Role-Scoped Dashboards — complete (2026-08-06)
+
+- Root resolves directly to Sign In; protected content stays hidden until
+  `/auth/me` validates the session.
+- Login accepts the backend-returned role/workspace instead of browser inference.
+- Migration 007 adds hashed, expiring, single-use password-reset records.
+- Recovery uses generic responses, rate limiting, bcrypt replacement, token
+  consumption, and complete session revocation.
+- New Students receive activity-scoped discovery and “No reports yet.” Admin
+  uses a protected active-Found database endpoint.
+- Dashboard caches are per authenticated account.
+- Migration ledger: 7/7. Full suite: **162 passed, 0 failed**.

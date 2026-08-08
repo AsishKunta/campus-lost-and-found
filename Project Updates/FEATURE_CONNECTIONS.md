@@ -584,3 +584,18 @@ Sign In / Refresh
 This changes only when and how first authorized data renders. It does not
 bypass authentication, merge role scopes, or alter matching, claims, messages,
 notifications, approval, return, or closure.
+
+## Authentication and recovery connection
+
+```text
+Public URL -> Sign In -> server session -> /auth/me
+  |-> Student -> relevant discovery / empty state -> existing recovery workflow
+  `-> Admin -> all active Found inventory -> existing review workflow
+
+Forgot Password -> hashed expiring token -> email link -> password reset
+  -> revoke sessions -> Sign In again
+```
+
+Role selection cannot bypass `requireRole`. Student discovery connects only
+through ownership, a persisted Lost/Found match, or an owned claim. Password
+recovery connects to users/sessions but not reports, claims, notes, or messages.

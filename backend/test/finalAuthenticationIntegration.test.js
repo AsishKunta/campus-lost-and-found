@@ -12,8 +12,8 @@ const profile = fs.readFileSync(path.join(root, "js/profile.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/modern.css"), "utf8");
 
 test("successful login selects a server-assigned workspace and enters the existing shell", () => {
-  assert.match(login, /data\.user\.roles\.includes\(desiredWorkspace\)/);
-  assert.match(login, /PATCH/);
+  assert.match(login, /Array\.isArray\(data\.user\.roles\)/);
+  assert.doesNotMatch(login, /desiredWorkspace|auth\/workspace/);
   assert.match(login, /cacheUser\(data\.user\)/);
   assert.match(login, /dashboard\.html#dashboard/);
 });
@@ -28,7 +28,8 @@ test("dashboard direct access requires a real interactive server session", () =>
 test("local API hostname follows the frontend hostname for SameSite sessions", () => {
   assert.match(common, /LOCAL_API_HOSTS = \["localhost", "127\.0\.0\.1"\]/);
   assert.match(common, /window\.location\.hostname/);
-  assert.match(common, /`http:\/\/\$\{API_HOST\}:3001`/);
+  assert.match(common, /`http:\/\/\$\{window\.location\.hostname\}:3001`/);
+  assert.match(common, /CAMPUS_API_BASE_URL/);
 });
 
 test("sidebar and Profile use the same canonical authenticated identity", () => {

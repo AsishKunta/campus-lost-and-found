@@ -135,6 +135,16 @@ standout portfolio features.
 Next objective: stop for owner review and demo freeze. Do not start another
 Phase 6 feature; email remains deferred.
 
+## 2026-08-06 status
+
+Current phase: **Authentication Completion & Role-Scoped Dashboards — complete.**
+Completed work now includes direct public Sign In entry, secure password
+recovery, Student activity scoping, and Admin active Found inventory. Overall
+major-roadmap progress remains **3 of 7 (approximately 43%)** because this is a
+completion/stabilization milestone. Remaining roadmap phases are unchanged.
+Next objective: configure deployment environments, apply migration 007 to
+Supabase, and perform owner acceptance testing. Do not start unrelated features.
+
 ## Phase completion rules
 
 A phase is complete only when:

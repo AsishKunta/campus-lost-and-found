@@ -9,6 +9,11 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/modern.css">
   <link rel="stylesheet" href="css/auth.css">
+  <script>
+    if (!['localhost', '127.0.0.1'].includes(location.hostname)) {
+      document.write('<script src="/api/runtime-config.js"><\\/script>');
+    }
+  </script>
 </head>
 <body class="auth-page">
   <main class="auth-shell">
@@ -59,7 +64,17 @@
             <input type="checkbox" id="rememberMe" name="rememberMe">
             <span>Remember me</span>
           </label>
+          <button type="button" id="forgotPasswordLink" class="auth-text-action">Forgot password?</button>
           <button type="submit" class="auth-submit">Sign In</button>
+        </form>
+
+        <form id="forgotPasswordForm" class="auth-form hidden" novalidate>
+          <div class="auth-field">
+            <label for="forgotPasswordEmail">Email</label>
+            <input type="email" id="forgotPasswordEmail" name="email" autocomplete="email" placeholder="name@student.com" required>
+          </div>
+          <button type="submit" class="auth-submit">Send Reset Link</button>
+          <button type="button" id="backToLogin" class="auth-text-action">Back to Sign In</button>
         </form>
 
         <form id="signupForm" class="auth-form hidden" novalidate>

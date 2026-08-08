@@ -9,6 +9,8 @@ const {
   setWorkspace,
   developmentStatus,
   getProfile,
+  forgotPassword,
+  completePasswordReset,
 } = require("../controllers/authController");
 const pool = require("../db");
 const { createAuthenticate } = require("../middleware/authenticate");
@@ -24,6 +26,8 @@ router.post("/signup", signup);
 
 // POST /auth/login
 router.post("/login", login);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", completePasswordReset);
 
 // POST /auth/logout
 router.post("/logout", logout);

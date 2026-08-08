@@ -134,7 +134,16 @@ exports.discoverFoundReports = async (req, res) => {
          ORDER BY rm.score DESC
          LIMIT 1
        ) matched ON TRUE
-       WHERE r.category = 'Found' AND r.lifecycle_status = 'active'
+       WHERE r.category = 'Found'
+         AND r.lifecycle_status = 'active'
+         AND (
+           r.user_id = $1
+           OR matched.lost_report_id IS NOT NULL
+           OR EXISTS (
+             SELECT 1 FROM claims c
+             WHERE c.report_id = r.id AND c.user_id = $1
+           )
+         )
        ORDER BY (matched.score IS NOT NULL) DESC,
                 matched.score DESC NULLS LAST,
                 r.created_at DESC`,
@@ -152,6 +161,22 @@ exports.discoverFoundReports = async (req, res) => {
   } catch (error) {
     logError("reports.discovery_failed", error);
     return res.status(500).json({ error: "Found items could not be loaded." });
+  }
+};
+
+exports.getActiveFoundReports = async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT r.*,
+              ARRAY(SELECT ri.image_url FROM report_images ri WHERE ri.report_id = r.id ORDER BY ri.sort_order, ri.id) AS image_urls
+       FROM reports r
+       WHERE r.category = 'Found' AND r.lifecycle_status = 'active'
+       ORDER BY r.created_at DESC`
+    );
+    return res.json(result.rows.map(rowToReport));
+  } catch (error) {
+    logError("reports.active_found_failed", error);
+    return res.status(500).json({ error: "Active Found Reports could not be loaded." });
   }
 };
 

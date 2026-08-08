@@ -1152,3 +1152,23 @@ and lifecycle contracts are unchanged.
 
 The measured Dashboard query plan on 23 reports completed in 0.106 ms. Its
 small-table sequential scan is appropriate; no speculative index was added.
+
+## Password recovery architecture
+
+```text
+Forgot Password -> generic rate-limited request
+  -> random token -> SHA-256 hash in password_reset_tokens
+  -> optional server-only Resend link
+  -> valid unused token FOR UPDATE
+  -> bcrypt password + used_at + revoke sessions -> Sign In
+```
+
+Disabled/failed delivery removes the undelivered token. Raw tokens exist only
+inside the delivery boundary.
+
+## Role-scoped Dashboard reads
+
+Student `/reports/discover` returns own active Found, matched-to-own-Lost, or
+claimed Found records. Admin `/reports/active-found` requires the active Admin
+role and returns every active Found row. Caches are keyed by authenticated user.
+Vercel `/api/runtime-config.js` emits only `BACKEND_API_URL`.

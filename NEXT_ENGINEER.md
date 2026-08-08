@@ -486,7 +486,7 @@ npm test
 After explicit approval, the next milestone should add isolated PostgreSQL
 HTTP integration/CI coverage and a dedicated Admin archive view. Preserve all
 Phase 1–4 migrations and security/lifecycle behavior. Never edit applied
-migrations 001–006; add migration 007 or later for schema evolution. Read
+migrations 001–007; add migration 008 or later for schema evolution. Read
 `DATABASE_ARCHITECTURE.md` before Phase 6 database work.
 
 This repository has the ingredients of a memorable portfolio project, but the
@@ -538,3 +538,11 @@ Real HTTP first-login and refresh checks passed for Student and Admin. Local
 endpoint timings were normal (about 2–10 ms; Dashboard SQL 0.106 ms), so no
 index or broader performance refactor was justified. Re-measure before acting
 on the documented notification/match-loop growth risks.
+
+Authentication completion is frozen at **162 passed, 0 failed**. Migration 007
+adds password recovery. Before deployment, apply it to Supabase, configure
+Vercel `BACKEND_API_URL`, Render `FRONTEND_ORIGINS`, and Resend if recovery email
+is required. Never expose raw tokens as a development shortcut.
+
+Preserve root-to-login, `auth-pending`, backend-role routing, user-keyed caches,
+activity-scoped Student discovery, and Admin-only active Found inventory.
