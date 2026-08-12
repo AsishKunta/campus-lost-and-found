@@ -5,6 +5,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "../..");
 const html = fs.readFileSync(path.join(root, "login.html"), "utf8");
+const dashboardHtml = fs.readFileSync(path.join(root, "dashboard.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/auth.css"), "utf8");
 const authUi = require(path.join(root, "js/login.js"));
 
@@ -60,4 +61,10 @@ test("login DOM initialization selectors match the page and runtime config canno
   assert.match(source, /signupTab\?\.addEventListener/);
   assert.match(source, /forgotPasswordLink\?\.addEventListener/);
   assert.match(source, /backToLogin\?\.addEventListener/);
+});
+
+test("dashboard runtime configuration script closes without corrupting the application shell", () => {
+  assert.match(dashboardHtml, /document\.write\('<script src="\/api\/runtime-config\.js"><\\\/script>'\)/);
+  assert.doesNotMatch(dashboardHtml, /<\\\\\/script>/);
+  assert.match(dashboardHtml, /<html lang="en" class="auth-pending">/);
 });
