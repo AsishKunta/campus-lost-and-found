@@ -10,6 +10,15 @@ const context = fs.readFileSync(path.join(root, "js/userContext.js"), "utf8");
 const router = fs.readFileSync(path.join(root, "js/router.js"), "utf8");
 const profile = fs.readFileSync(path.join(root, "js/profile.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/modern.css"), "utf8");
+const vercel = fs.readFileSync(path.join(root, "vercel.json"), "utf8");
+
+test("production entry, authenticated redirect, refresh, and logout form a closed routing loop", () => {
+  assert.match(vercel, /"source": "\/"[\s\S]*"destination": "\/login\.html"/);
+  assert.match(login, /auth\/me/);
+  assert.match(login, /sessionResponse\.ok[\s\S]*location\.replace\("dashboard\.html#dashboard"\)/);
+  assert.match(common, /auth\/me[\s\S]*classList\.remove\("auth-pending"\)/);
+  assert.match(common, /auth\/logout[\s\S]*clearBrowserIdentity\(\)[\s\S]*location\.href = "login\.html"/);
+});
 
 test("successful login selects a server-assigned workspace and enters the existing shell", () => {
   assert.match(login, /Array\.isArray\(data\.user\.roles\)/);
