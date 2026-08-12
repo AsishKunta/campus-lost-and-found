@@ -51,7 +51,8 @@ account must authenticate with its own bcrypt-protected password.
 
 > **Phase 6 Step 3 session hardening:** Production sessions now default to a
 > host-only `__Host-campus_session` cookie with `Secure`, `HttpOnly`,
-> `SameSite=Lax`, `/` path, and explicit expiry. Auth responses are not cached,
+> `SameSite=None`, `/` path, and explicit expiry for the Vercel-to-Render
+> cross-site deployment. Auth responses are not cached,
 > production CORS fails closed without an explicit allowlist, baseline security
 > headers are applied globally, and repeated failed logins are temporarily
 > throttled. No authentication architecture or recovery workflow changed.
@@ -513,8 +514,11 @@ Configure trusted production origins with `FRONTEND_ORIGINS` and set
 terminates before Express. Wildcard origins are rejected and production no
 longer inherits development origins.
 
-`SESSION_COOKIE_SAME_SITE=lax` is the supported default. Do not enable `none`
-without HTTPS and an explicit CSRF control. Login throttling defaults to ten
+`SESSION_COOKIE_SAME_SITE=none` is the production default required by the
+separate Vercel frontend and Render API sites. It remains paired with HTTPS,
+`Secure`, the host-only `__Host-` prefix, credentialed origin allowlisting, and
+JSON request handling. Same-site deployments may explicitly select `lax`.
+Login throttling defaults to ten
 failed attempts per IP/email pair in fifteen minutes; the current in-process
 store is suitable for this single-process application, but a shared store or
 gateway limiter is required before horizontally scaled deployment.

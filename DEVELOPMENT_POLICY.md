@@ -27,8 +27,8 @@ browser domain checks never authorize access.
 - Keep session tokens random, opaque, and stored only as SHA-256 hashes in the
   database; never log or expose raw tokens.
 - Production cookies must remain host-only, `Secure`, `HttpOnly`, path `/`,
-  explicitly expiring, and `SameSite=Lax` unless a documented deployment need
-  and CSRF control justify another setting.
+  explicitly expiring, and `SameSite=None` while Vercel and Render remain
+  separate sites. Same-site deployments may use `Lax`.
 - Production CORS must fail closed and use an explicit credentialed origin
   allowlist. Wildcard origins are prohibited.
 - Preserve global anti-sniffing, frame-denial, referrer, and permissions
@@ -37,8 +37,10 @@ browser domain checks never authorize access.
   unverified forwarding headers.
 - Retain login throttling. Replace its process-local store with shared/edge
   enforcement before multi-instance deployment.
-- A future password-change feature must revoke all active sessions. A future
-  cross-site cookie deployment must add explicit CSRF protection first.
+- A future password-change feature must revoke all active sessions. Preserve
+  exact credentialed origin validation and JSON request handling for the
+  current cross-site cookie deployment; add explicit CSRF tokens if future
+  endpoints or topology weaken that boundary.
 - Remember Me may alter only the server-selected session TTL. Keep the normal
   and remembered durations centralized, accept only a boolean request flag,
   and preserve identical token hashing, cookie flags, expiration validation,
@@ -241,7 +243,8 @@ Documentation and naming are part of implementation.
 - Use opaque cryptographically random session tokens.
 - Store only a one-way session-token hash in PostgreSQL.
 - Send raw session tokens only in HTTP-only cookies.
-- Use `SameSite=Lax`, a root path, explicit expiry, and `Secure` in production.
+- Use `SameSite=None`, a root path, explicit expiry, and `Secure` for the
+  cross-site Vercel-to-Render production topology; use `Lax` locally.
 - Derive authenticated identity exclusively from the server session.
 - Never accept user ID, email, or sender identity from a browser as
   authoritative.

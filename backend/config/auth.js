@@ -10,8 +10,12 @@ function parsePositiveInteger(value, fallback) {
 }
 
 function sessionSameSite(environment, secureCookies) {
-  const requested = String(environment.SESSION_COOKIE_SAME_SITE || "lax").toLowerCase();
-  if (!["lax", "strict", "none"].includes(requested)) return "lax";
+  // The production frontend and API are deployed on different sites (Vercel
+  // and Render), so the session cookie must be eligible for cross-site fetches.
+  // Local HTTP development cannot use SameSite=None because it is not Secure.
+  const defaultPolicy = secureCookies ? "none" : "lax";
+  const requested = String(environment.SESSION_COOKIE_SAME_SITE || defaultPolicy).toLowerCase();
+  if (!["lax", "strict", "none"].includes(requested)) return defaultPolicy;
   return requested === "none" && !secureCookies ? "lax" : requested;
 }
 

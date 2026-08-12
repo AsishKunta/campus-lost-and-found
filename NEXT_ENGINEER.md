@@ -31,8 +31,9 @@
 > defaults, explicit expiry, auth `no-store`, global security headers,
 > fail-closed production CORS, exact proxy trust, and failure-only login
 > throttling. Do not deploy multiple API instances until throttling uses a
-> shared/edge store. Do not enable `SameSite=None` without explicit CSRF
-> protection. Full suite: 110 tests.
+> shared/edge store. The separate Vercel/Render sites require
+> `SameSite=None; Secure`; preserve exact credentialed origin validation and
+> JSON request handling. Full suite: 110 tests.
 >
 > Phase 6 Step 4A is complete. Preserve the server-owned eight-hour/30-day TTL
 > choice, boolean-only `rememberMe`, unchanged secure cookie/session/logout
@@ -524,8 +525,9 @@ email domains are registration conventions only and never request-time proof.
 Preserve the Step 3 session boundary: production host-only secure cookies,
 explicit expiry, auth no-cache, global security headers, fail-closed production
 CORS, exact proxy trust, and login throttling. The limiter is process-local;
-replace it before multi-instance production. SameSite=None requires explicit
-CSRF protection first.
+replace it before multi-instance production. Preserve `SameSite=None; Secure`
+while Vercel and Render remain separate sites, together with the exact origin
+allowlist and credentialed fetches.
 
 Current suite: 139 passed, 0 failed. Steps 4A–4B and the deterministic Smart
 Search Engine are complete. Do not add semantic/vector/external-AI search or

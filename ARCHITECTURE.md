@@ -102,7 +102,7 @@ Cookie defaults are environment-aware:
 | Name | `campus_session` | `__Host-campus_session` |
 | HttpOnly | Yes | Yes |
 | Secure | No | Yes |
-| SameSite | Lax | Lax |
+| SameSite | Lax | None (Vercel → Render cross-site) |
 | Path | `/` | `/` |
 | Domain | Unset | Unset |
 | Lifetime | Explicit `Max-Age` + `Expires` | Explicit `Max-Age` + `Expires` |
@@ -114,10 +114,10 @@ camera/geolocation/microphone `Permissions-Policy`. Auth responses use
 
 Production CORS accepts credentialed requests only from explicit
 `FRONTEND_ORIGINS`; missing configuration permits no browser origin and `*` is
-rejected. Development retains the documented loopback allowlist. SameSite=Lax,
-JSON request bodies, and explicit credentialed CORS materially mitigate CSRF
-for the current same-site topology. A CSRF token becomes mandatory before any
-cross-site `SameSite=None` deployment.
+rejected. Development retains the documented loopback allowlist. Production's
+Vercel-to-Render topology requires `SameSite=None`; `Secure`, the host-only
+`__Host-` prefix, JSON request bodies, and the exact credentialed origin
+allowlist remain the transport and CSRF boundary.
 
 Failed login throttling is keyed by a SHA-256 digest of client IP and normalized
 email, counts only invalid credentials, clears after successful login, and

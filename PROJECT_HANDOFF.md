@@ -80,15 +80,17 @@ The existing session design remains authoritative: login creates a new
 256-bit opaque token, only its SHA-256 hash is persisted, middleware rechecks
 revocation/expiry and current roles on every request, and logout revokes the
 row before clearing the cookie. Production defaults to the host-only
-`__Host-campus_session` cookie (`Secure`, `HttpOnly`, `SameSite=Lax`, path `/`,
-explicit lifetime); development retains a non-Secure localhost cookie.
+`__Host-campus_session` cookie (`Secure`, `HttpOnly`, `SameSite=None`, path `/`,
+explicit lifetime) because Vercel and Render are separate sites; development
+retains a non-Secure `SameSite=Lax` localhost cookie.
 
 `backend/config/cors.js` now requires explicit production origins and rejects
 wildcards. `securityHeaders.js` runs before CORS/routes, auth responses are
 `no-store`, and `loginAttemptLimiter.js` applies failure-only IP/email
 throttling. Configure `TRUST_PROXY_HOPS` precisely behind a reverse proxy.
 Before scaling to multiple API instances, move throttling to a shared store or
-edge gateway. Before using `SameSite=None`, implement explicit CSRF tokens.
+edge gateway. Preserve exact credentialed origin validation and JSON request
+handling while the production session cookie is cross-site.
 There is no Remember Me or password-change flow; neither was added in Step 3.
 
 ### Phase 6 Step 4A Remember Me handoff

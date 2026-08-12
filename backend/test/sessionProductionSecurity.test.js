@@ -10,7 +10,7 @@ const { securityHeaders } = require("../middleware/securityHeaders");
 const { createLoginAttemptLimiter } = require("../services/loginAttemptLimiter");
 const { clearSessionCookieOptions, sessionCookieOptions } = require("../utils/sessionCookie");
 
-test("production cookie defaults are host-bound, secure, HTTP-only, and explicitly expiring", () => {
+test("production cross-site cookie defaults are host-bound, secure, HTTP-only, and explicitly expiring", () => {
   const config = getAuthConfig({ NODE_ENV: "production" });
   const expiresAt = new Date(Date.now() + 60_000);
   const options = sessionCookieOptions(config, expiresAt);
@@ -18,7 +18,7 @@ test("production cookie defaults are host-bound, secure, HTTP-only, and explicit
   assert.equal(config.cookieName, "__Host-campus_session");
   assert.equal(options.httpOnly, true);
   assert.equal(options.secure, true);
-  assert.equal(options.sameSite, "lax");
+  assert.equal(options.sameSite, "none");
   assert.equal(options.path, "/");
   assert.equal(options.expires, expiresAt);
   assert.ok(options.maxAge > 0 && options.maxAge <= 60_000);
@@ -26,7 +26,7 @@ test("production cookie defaults are host-bound, secure, HTTP-only, and explicit
   assert.deepEqual(clearSessionCookieOptions(config), {
     httpOnly: true,
     secure: true,
-    sameSite: "lax",
+    sameSite: "none",
     path: "/",
   });
 });
@@ -46,6 +46,10 @@ test("development cookies remain localhost compatible and SameSite=None requires
   });
   assert.equal(production.sameSite, "none");
   assert.equal(production.secureCookies, true);
+  assert.equal(
+    getAuthConfig({ NODE_ENV: "production", SESSION_COOKIE_SAME_SITE: "invalid" }).sameSite,
+    "none"
+  );
 });
 
 test("Remember Me retains production cookie security while extending server expiry", () => {
@@ -57,10 +61,31 @@ test("Remember Me retains production cookie security while extending server expi
   assert.equal(config.rememberedSessionTtlMs, 30 * 24 * 60 * 60 * 1000);
   assert.equal(options.httpOnly, true);
   assert.equal(options.secure, true);
-  assert.equal(options.sameSite, "lax");
+  assert.equal(options.sameSite, "none");
   assert.equal(options.path, "/");
   assert.equal("domain" in options, false);
   assert.ok(options.maxAge > 29 * 24 * 60 * 60 * 1000);
+});
+
+test("Vercel to Render authentication keeps every cross-site cookie requirement aligned", () => {
+  const root = path.join(__dirname, "../..");
+  const commonSource = fs.readFileSync(path.join(root, "js/common.js"), "utf8");
+  const runtimeConfigSource = fs.readFileSync(path.join(root, "api/runtime-config.js"), "utf8");
+  const corsSource = fs.readFileSync(path.join(__dirname, "../config/cors.js"), "utf8");
+  const environmentExample = fs.readFileSync(path.join(__dirname, "../.env.example"), "utf8");
+  const config = getAuthConfig({ NODE_ENV: "production" });
+  const options = sessionCookieOptions(config, new Date(Date.now() + 60_000));
+
+  assert.match(runtimeConfigSource, /BACKEND_API_URL/);
+  assert.match(commonSource, /credentials:\s*["']include["']/);
+  assert.match(corsSource, /credentials:\s*true/);
+  assert.match(environmentExample, /SESSION_COOKIE_SAME_SITE=none/);
+  assert.equal(config.cookieName, "__Host-campus_session");
+  assert.equal(options.sameSite, "none");
+  assert.equal(options.secure, true);
+  assert.equal(options.httpOnly, true);
+  assert.equal(options.path, "/");
+  assert.equal("domain" in options, false);
 });
 
 test("security header middleware sets restrained production-safe defaults", () => {
