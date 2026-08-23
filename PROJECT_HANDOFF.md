@@ -1493,3 +1493,12 @@ scoped; Admin uses protected `/reports/active-found`; caches include user ID.
 
 Apply migration 007 to Supabase. Configure Vercel `BACKEND_API_URL`, Render
 `FRONTEND_ORIGINS`, and the documented recovery-email variables before release.
+
+### Production signup handoff
+
+The browser validates email syntax only. `registerUser()` remains authoritative
+for initial membership: production defaults to Student, while configured local
+development may map exact demo domains. Never restore client-side role
+expectations based on an email suffix; that can report failure after the
+database has already created a valid account. Authentication UI requests use
+`apiFetchWithTimeout(..., 30000)` and restore controls on timeout/failure.

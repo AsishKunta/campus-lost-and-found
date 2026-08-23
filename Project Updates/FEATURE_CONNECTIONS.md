@@ -1,5 +1,22 @@
 # Campus Lost & Found — Feature Connections
 
+## Production account entry connection
+
+```text
+Valid email + password
+  -> POST /auth/signup
+  -> bcrypt password hash
+  -> users + Student user_roles membership
+  -> Sign In
+  -> hashed server session + HttpOnly cookie
+  -> /auth/me
+  -> Student Dashboard and recovery workflow
+```
+
+Admin membership is deliberately outside public signup. Authentication calls
+share a bounded lifecycle so backend unavailability returns the user to an
+actionable form instead of blocking navigation indefinitely.
+
 ## Complete application workflow
 
 ```text

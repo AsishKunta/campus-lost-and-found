@@ -27,11 +27,11 @@
         <h1 id="authProductTitle">A trusted path from discovery to return.</h1>
         <p>Securely report, match, verify, and recover campus belongings through one coordinated service.</p>
       </div>
-      <div class="auth-demo-note" role="note" aria-label="Demo authentication instructions">
-        <strong>Demo authentication</strong>
-        <p>Use an email ending in <code>@student.com</code> for a Student account.</p>
-        <p>Use an email ending in <code>@admin.com</code> for an Admin account.</p>
-        <small>This convention is limited to the current development environment.</small>
+      <div class="auth-demo-note" role="note" aria-label="Account workspace information">
+        <strong>Secure workspace access</strong>
+        <p>New production accounts begin in the Student workspace.</p>
+        <p>Administrative access is assigned by an authorized university administrator.</p>
+        <small>Local development may use configured demo-domain role conventions.</small>
       </div>
     </section>
 
@@ -51,7 +51,7 @@
         <form id="loginForm" class="auth-form" novalidate>
           <div class="auth-field">
             <label for="loginEmail">Email</label>
-            <input type="email" id="loginEmail" name="email" autocomplete="email" placeholder="name@student.com" required>
+            <input type="email" id="loginEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
           </div>
           <div class="auth-field">
             <label for="loginPassword">Password</label>
@@ -71,7 +71,7 @@
         <form id="forgotPasswordForm" class="auth-form hidden" novalidate>
           <div class="auth-field">
             <label for="forgotPasswordEmail">Email</label>
-            <input type="email" id="forgotPasswordEmail" name="email" autocomplete="email" placeholder="name@student.com" required>
+            <input type="email" id="forgotPasswordEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
           </div>
           <button type="submit" class="auth-submit">Send Reset Link</button>
           <button type="button" id="backToLogin" class="auth-text-action">Back to Sign In</button>
@@ -84,7 +84,7 @@
           </div>
           <div class="auth-field">
             <label for="signupEmail">Email</label>
-            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder="name@student.com" required>
+            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
           </div>
           <div class="auth-field">
             <label for="signupPassword">Password</label>

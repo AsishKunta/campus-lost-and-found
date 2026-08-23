@@ -548,3 +548,10 @@ is required. Never expose raw tokens as a development shortcut.
 
 Preserve root-to-login, `auth-pending`, backend-role routing, user-keyed caches,
 activity-scoped Student discovery, and Admin-only active Found inventory.
+## Production signup invariant (2026-08-23)
+
+- Production self-registration creates Student membership for any valid email.
+- Admin membership remains server-controlled; never infer it in browser code.
+- Preserve bounded authentication requests and recoverable timeout feedback.
+- Before a hosted demo, confirm Render responds and migration 007 is applied;
+  the API intentionally refuses startup when migrations are pending.

@@ -270,3 +270,10 @@ it, supports secure email-delivered password reset, and uses backend session
 roles as the only authorization authority. New Students see only relevant
 activity or an empty state; Admins immediately receive all active Found inventory
 from PostgreSQL. Migration 007 is the sole schema addition.
+## Production signup stabilization (2026-08-23)
+
+Production signup accepts ordinary valid email addresses and always takes its
+initial workspace from the backend response. Public registration defaults to
+Student; Admin membership remains server-controlled. Authentication requests
+are bounded and recover visibly when the hosted API is unavailable, while each
+form independently restores its correct submit label after completion.

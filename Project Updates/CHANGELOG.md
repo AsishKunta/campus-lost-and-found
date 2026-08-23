@@ -834,3 +834,20 @@ authoritative handoff:
 - Browser root, protected redirect, recovery states, Student empty state, and
   Admin inventory passed without console errors.
 - Migration ledger 7/7; full suite **162 passed, 0 failed**.
+## 2026-08-23 12:54 CDT — Production Signup Stabilization
+
+### Changed
+
+- Accepted ordinary valid email addresses in the authentication UI.
+- Removed client-side expectations that an email suffix grants a production
+  role; the backend's safe Student default remains authoritative.
+- Bounded signup, login, recovery, and session-restoration requests to 30
+  seconds with recoverable timeout/network feedback.
+- Updated account guidance without changing authorization, sessions, database
+  schema, or recovery workflows.
+
+### Verified
+
+- Focused authentication coverage includes arbitrary production email signup,
+  safe Student role assignment, role non-escalation, and bounded requests.
+- Focused suite passed 34/34; full regression suite passed 166/166.

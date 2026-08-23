@@ -19,7 +19,8 @@ test("temporary development domains map to exact workspace labels", () => {
 
 test("authentication validation covers required and malformed input", () => {
   assert.equal(authUi.validateLogin({ email: "", password: "" }), "Enter a valid email address.");
-  assert.match(authUi.validateLogin({ email: "user@gmail.com", password: "password" }), /development environment/);
+  assert.equal(authUi.validateLogin({ email: "user@gmail.com", password: "password" }), "");
+  assert.equal(authUi.validateSignup({ name: "Student", email: "user@university.edu", password: "password", passwordConfirm: "password" }), "");
   assert.equal(authUi.validateSignup({ name: "Student", email: "sun04@student.com", password: "password", passwordConfirm: "different" }), "Passwords do not match.");
   assert.match(authUi.validateSignup({ name: "Student", email: "sun04@student.com", password: "short", passwordConfirm: "short" }), /at least 8/);
 });
@@ -32,6 +33,10 @@ test("authentication page integrates through one canonical user cache and dashbo
   assert.match(source, /location\.replace\("dashboard\.html#dashboard"\)/);
   assert.doesNotMatch(source, /auth\/workspace/);
   assert.match(source, /Array\.isArray\(data\.user\.roles\)/);
+  assert.doesNotMatch(source, /expectedRole/);
+  assert.match(source, /apiFetchWithTimeout\(url, options, 30000\)/);
+  assert.match(source, /error\?\.name === "AbortError"/);
+  assert.match(source, /form === signupForm[\s\S]*"Create Account", "Creating account…"/);
   assert.doesNotMatch(html, /Dashboard integration is intentionally disabled/);
 });
 

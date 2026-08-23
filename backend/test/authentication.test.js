@@ -427,6 +427,8 @@ test("development domain roles use exact normalized domains and fail closed in p
   assert.equal(inferDevelopmentRole("someone@admin.com.fake", true), null);
   assert.equal(inferDevelopmentRole("someone@student.com.fake", true), null);
   assert.equal(getAuthConfig({ NODE_ENV: "production", DEMO_DOMAIN_ROLES: "true" }).demoDomainRolesEnabled, false);
+  assert.equal(inferDevelopmentRole("student@university.edu", false), "student");
+  assert.equal(inferDevelopmentRole("requested-admin@admin.com", false), "student");
 
   const pool = createMemoryPool();
   const admin = await registerUser(pool, bcrypt, {
@@ -436,6 +438,14 @@ test("development domain roles use exact normalized domains and fail closed in p
   }, { demoDomainRolesEnabled: true });
   assert.equal(admin.role, "admin");
   assert.deepEqual(admin.roles, ["admin"]);
+
+  const productionStudent = await registerUser(pool, bcrypt, {
+    name: "Production Student",
+    email: "production@university.edu",
+    password: "valid-password",
+  }, { demoDomainRolesEnabled: false });
+  assert.equal(productionStudent.role, "student");
+  assert.deepEqual(productionStudent.roles, ["student"]);
 
   await assert.rejects(
     registerUser(pool, bcrypt, {

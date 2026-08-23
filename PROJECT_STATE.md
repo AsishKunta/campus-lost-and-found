@@ -10,6 +10,13 @@ interpreted as production readiness.
 matching, versioned persistence, secure authentication, authorization, and
 transactional claim management.
 
+**Latest production signup stabilization (2026-08-23):** Production registration
+accepts ordinary valid email addresses and relies on the backend's secure
+Student default. The frontend no longer assumes an `@admin.com` address grants
+Admin membership or falsely rejects a server-created Student account. Login,
+signup, password recovery, and session restoration use bounded 30-second
+requests with recoverable feedback. No schema or authorization rule changed.
+
 **Current milestone:** Phase 4 regression fixes and UX completion complete,
 awaiting owner review. The student/admin journey now runs from Found-item
 discovery through claim, re-verification, decision, return, and archival.

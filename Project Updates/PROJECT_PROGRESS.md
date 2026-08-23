@@ -2,7 +2,13 @@
 
 ## Current phase
 
-**Matching Workflow Correction complete, awaiting owner review**
+**Production signup stabilization complete, awaiting hosted-backend verification**
+
+The frontend/backend signup contract is synchronized: ordinary valid emails
+are accepted, production accounts default securely to Student, Admin roles are
+not inferred client-side, and authentication requests terminate with clear
+feedback. The remaining hosted-environment check is operational: Render must be
+available and its PostgreSQL ledger must include migration 007.
 
 Migration, secure authentication, multi-role authorization, durable matching
 notifications, and transactional claim management are complete.

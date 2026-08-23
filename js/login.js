@@ -21,9 +21,6 @@
   function validateEmail(email) {
     const normalized = normalizeEmail(email);
     if (!normalized || !EMAIL_PATTERN.test(normalized)) return "Enter a valid email address.";
-    if (!detectDemoWorkspace(normalized)) {
-      return "Please use a @student.com or @admin.com email for this development environment.";
-    }
     return "";
   }
 
@@ -109,10 +106,13 @@
       requestInFlight = loading;
       const button = form.querySelector('[type="submit"]');
       if (!button) return;
+      const labels = form === loginForm
+        ? ["Sign In", "Signing in…"]
+        : form === signupForm
+          ? ["Create Account", "Creating account…"]
+          : ["Send Reset Link", "Sending…"];
       button.disabled = loading;
-      button.textContent = loading
-        ? (activeMode === "login" ? "Signing in…" : activeMode === "signup" ? "Creating account…" : "Sending…")
-        : (activeMode === "login" ? "Sign In" : activeMode === "signup" ? "Create Account" : "Send Reset Link");
+      button.textContent = labels[loading ? 1 : 0];
       form.setAttribute("aria-busy", String(loading));
     }
 
@@ -133,6 +133,20 @@
 
     async function parseResponse(response) {
       try { return await response.json(); } catch (_) { return {}; }
+    }
+
+    function authenticationErrorMessage(error, fallback) {
+      if (error?.name === "AbortError") {
+        return "The authentication server is taking too long to respond. Please try again.";
+      }
+      if (error?.message === "Failed to fetch") {
+        return "Cannot reach the authentication server. Please try again when it is available.";
+      }
+      return error?.message || fallback;
+    }
+
+    function authRequest(url, options) {
+      return globalScope.apiFetchWithTimeout(url, options, 30000);
     }
 
     loginTab?.addEventListener("click", () => setMode("login"));
@@ -172,16 +186,15 @@
       setLoading(signupForm, true);
       clearFeedback();
       try {
-        const response = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/signup`, {
+        const response = await authRequest(`${globalScope.BASE_URL}/auth/signup`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: input.name, email: input.email, password: input.password }),
         });
         const data = await parseResponse(response);
         if (!response.ok) throw new Error(data.error || "Account creation failed. Please try again.");
-        const expectedRole = detectDemoWorkspace(input.email).toLowerCase();
-        if (!data.user?.roles?.includes(expectedRole)) {
-          throw new Error("The development account role could not be assigned. Please contact the project administrator.");
+        if (!data.user || !Array.isArray(data.user.roles)) {
+          throw new Error("The server did not return a valid account workspace.");
         }
         setMode("login");
         document.getElementById("loginEmail").value = input.email;
@@ -189,7 +202,7 @@
         setFeedback("Account created successfully. Sign in to continue.", "success");
         document.getElementById("loginPassword").focus();
       } catch (error) {
-        setFeedback(error.message === "Failed to fetch" ? "Cannot reach the authentication server. Please try again when it is running." : error.message);
+        setFeedback(authenticationErrorMessage(error, "Account creation failed. Please try again."));
       } finally {
         setLoading(signupForm, false);
       }
@@ -209,7 +222,7 @@
       setLoading(loginForm, true);
       clearFeedback();
       try {
-        const response = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/login`, {
+        const response = await authRequest(`${globalScope.BASE_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
@@ -222,7 +235,7 @@
         cacheUser(data.user);
         globalScope.location.replace("dashboard.html#dashboard");
       } catch (error) {
-        setFeedback(error.message === "Failed to fetch" ? "Cannot reach the authentication server. Please try again when it is running." : error.message);
+        setFeedback(authenticationErrorMessage(error, "Sign in failed. Please try again."));
       } finally {
         setLoading(loginForm, false);
       }
@@ -237,7 +250,7 @@
       setLoading(forgotPasswordForm, true);
       clearFeedback();
       try {
-        const response = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/forgot-password`, {
+        const response = await authRequest(`${globalScope.BASE_URL}/auth/forgot-password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(input),
@@ -247,7 +260,7 @@
         forgotPasswordForm.reset();
         setFeedback(data.message || "If an account exists for that email, a password reset link will be sent.", "success");
       } catch (error) {
-        setFeedback(error.message === "Failed to fetch" ? "Cannot reach the authentication server." : error.message);
+        setFeedback(authenticationErrorMessage(error, "Password reset could not be requested."));
       } finally {
         setLoading(forgotPasswordForm, false);
       }
@@ -255,7 +268,7 @@
 
     setMode("login");
     try {
-      const sessionResponse = await globalScope.apiFetch(`${globalScope.BASE_URL}/auth/me`);
+      const sessionResponse = await authRequest(`${globalScope.BASE_URL}/auth/me`);
       if (sessionResponse.ok) {
         const sessionData = await parseResponse(sessionResponse);
         if (sessionData.user && !sessionData.user.developmentBypass) {

@@ -587,3 +587,12 @@ Student discovery includes their own active Found Reports, Found Reports matched
 to their Lost Reports, and Found Reports they claimed. New Students see a clean
 empty state. Admins load all active Found inventory through the Admin-only
 `GET /reports/active-found` endpoint.
+
+### Production signup behavior
+
+Production registration accepts any syntactically valid email address and
+creates a Student account. Admin membership is never inferred from an email
+domain in production; it must be assigned through an authorized administrative
+process. Exact demo-domain role conventions remain limited to configured local
+development. Authentication requests have a 30-second client deadline and
+restore their controls with an actionable error when the API is unavailable.

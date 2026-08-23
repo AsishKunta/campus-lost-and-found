@@ -1,5 +1,46 @@
 # Campus Lost & Found — Feature Catalog
 
+## Production signup and authentication resilience
+
+**Purpose:** Let legitimate first-time users create accounts without exposing
+Admin privilege assignment or becoming trapped when the hosted API is slow.
+
+**How it works:** The browser validates name, email syntax, password length,
+and confirmation. `POST /auth/signup` validates again, hashes the password with
+bcrypt, assigns the server-controlled initial role, writes `users` and
+`user_roles`, and returns the canonical public user. Production always defaults
+to Student; configured local development may use exact demo-domain mapping.
+
+**User workflow:** Open Sign Up → enter a valid email and password → create an
+account → return to Sign In → authenticate → restore the HTTP-only session on
+Dashboard. A slow/unavailable API produces recoverable feedback after 30
+seconds and never leaves the submit control permanently disabled.
+
+**Backend logic:** Registration validation, bcrypt hashing, uniqueness handling,
+role assignment, and public DTO creation remain in `authService`. The browser
+does not predict or override the returned role.
+
+**Frontend interaction:** Sign Up accepts normal email domains, communicates
+that production accounts begin as Student, validates the returned role array,
+and uses the shared bounded credentialed fetch helper for signup, login,
+password recovery, and `/auth/me` restoration.
+
+**Database involvement:** Existing `users`, `user_roles`, and `sessions` tables
+are reused. No migration or schema change was required.
+
+**API endpoints:** `POST /auth/signup`, `POST /auth/login`, `GET /auth/me`,
+`POST /auth/logout`, and `POST /auth/forgot-password`.
+
+**Files involved:** `login.html`, `js/login.js`, `backend/services/authService.js`,
+`backend/controllers/authController.js`, and focused authentication tests.
+
+**Connected features:** Server sessions, Student workspace initialization,
+password recovery, role authorization, profile identity, and logout.
+
+**Future improvements:** Monitor Render availability/cold-start latency and add
+external uptime alerting. Provision Admin roles through an audited university
+workflow rather than public self-registration.
+
 ## Stabilized shared workspace experience
 
 **Purpose:** Keep Student, Admin, Messaging, Claim Review, and Profile Details
