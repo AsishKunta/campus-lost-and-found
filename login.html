@@ -28,10 +28,29 @@
         <p>Securely report, match, verify, and recover campus belongings through one coordinated service.</p>
       </div>
       <div class="auth-demo-note" role="note" aria-label="Account workspace information">
-        <strong>Secure workspace access</strong>
-        <p>New production accounts begin in the Student workspace.</p>
-        <p>Administrative access is assigned by an authorized university administrator.</p>
-        <small>Local development may use configured demo-domain role conventions.</small>
+        <strong class="auth-demo-title">Secure Workspace Access</strong>
+        <div class="auth-demo-section">
+          <strong>Student Portal</strong>
+          <ul><li>Create or sign in using an email ending with <code>@student.com</code>.</li></ul>
+        </div>
+        <div class="auth-demo-section">
+          <strong>Admin Portal</strong>
+          <ul><li>Create or sign in using an email ending with <code>@admin.com</code>.</li></ul>
+        </div>
+        <div class="auth-demo-section">
+          <strong>Demo Tip</strong>
+          <ul>
+            <li>New users can create an account using either domain.</li>
+            <li>The selected email domain automatically determines whether the account opens the Student Portal or the Admin Portal.</li>
+          </ul>
+        </div>
+        <div class="auth-demo-section auth-demo-security">
+          <strong>Security Note</strong>
+          <ul>
+            <li>In this demo environment, role selection is based on the email domain for testing purposes.</li>
+            <li>In a production environment, administrator access is assigned securely by the university and cannot be self-selected.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -51,7 +70,7 @@
         <form id="loginForm" class="auth-form" novalidate>
           <div class="auth-field">
             <label for="loginEmail">Email</label>
-            <input type="email" id="loginEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
+            <input type="email" id="loginEmail" name="email" autocomplete="email" placeholder="username@student/admin.com" required>
           </div>
           <div class="auth-field">
             <label for="loginPassword">Password</label>
@@ -71,7 +90,7 @@
         <form id="forgotPasswordForm" class="auth-form hidden" novalidate>
           <div class="auth-field">
             <label for="forgotPasswordEmail">Email</label>
-            <input type="email" id="forgotPasswordEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
+            <input type="email" id="forgotPasswordEmail" name="email" autocomplete="email" placeholder="student@student.com" required>
           </div>
           <button type="submit" class="auth-submit">Send Reset Link</button>
           <button type="button" id="backToLogin" class="auth-text-action">Back to Sign In</button>
@@ -84,7 +103,7 @@
           </div>
           <div class="auth-field">
             <label for="signupEmail">Email</label>
-            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder="name@university.edu" required>
+            <input type="email" id="signupEmail" name="email" autocomplete="email" placeholder="username@student/admin.com" required>
           </div>
           <div class="auth-field">
             <label for="signupPassword">Password</label>

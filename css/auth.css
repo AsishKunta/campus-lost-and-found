@@ -41,9 +41,13 @@ body.auth-page {
 .auth-introduction-copy > p:last-child { max-width: 510px; margin: 0; color: #d9e8e2; font-size: 1.05rem; line-height: 1.7; }
 .auth-eyebrow { margin: 0; color: #6bc5a5; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .auth-demo-note { max-width: 520px; padding: 18px 20px; border: 1px solid rgba(255,255,255,.16); border-radius: 16px; background: rgba(255,255,255,.08); }
-.auth-demo-note strong { display: block; margin-bottom: 8px; }
-.auth-demo-note p { margin: 4px 0; color: #edf7f3; font-size: .9rem; }
-.auth-demo-note small { display: block; margin-top: 10px; color: #bdd4cb; line-height: 1.45; }
+.auth-demo-note strong { display: block; }
+.auth-demo-title { margin-bottom: 14px; font-size: 1rem; }
+.auth-demo-section + .auth-demo-section { margin-top: 12px; }
+.auth-demo-section > strong { margin-bottom: 4px; color: #fff; font-size: .9rem; }
+.auth-demo-section ul { margin: 0; padding-left: 19px; color: #edf7f3; font-size: .875rem; line-height: 1.45; }
+.auth-demo-section li + li { margin-top: 4px; }
+.auth-demo-security { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.14); }
 .auth-demo-note code { color: #fff; font-family: inherit; font-weight: 750; }
 
 .auth-panel { display: grid; place-items: center; padding: clamp(24px, 5vw, 72px); }
