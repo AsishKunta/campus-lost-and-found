@@ -3,7 +3,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { safeErrorMetadata, logError } = require("../utils/safeLogger");
+const {
+  safeErrorMetadata,
+  logError,
+  logStartupError,
+} = require("../utils/safeLogger");
 
 function source(relativePath) {
   return fs.readFileSync(path.join(__dirname, "..", relativePath), "utf8");
@@ -42,6 +46,23 @@ test("safe logger emits operation context and metadata without sensitive error c
   assert.match(serialized, /claims\.test_failed/);
   assert.match(serialized, /TEST_FAILURE/);
   assert.doesNotMatch(serialized, /hidden sticker|verified serial number/);
+});
+
+test("startup logging is detailed locally and remains redacted in production", () => {
+  const original = console.error;
+  const entries = [];
+  console.error = (...args) => entries.push(args);
+  const error = new Error("The server does not support SSL connections");
+
+  try {
+    logStartupError("server.startup_failed", error, { NODE_ENV: "development" });
+    logStartupError("server.startup_failed", error, { NODE_ENV: "production" });
+  } finally {
+    console.error = original;
+  }
+
+  assert.match(entries[0][1], /does not support SSL connections/);
+  assert.deepEqual(entries[1], ["server.startup_failed", { name: "Error" }]);
 });
 
 test("report runtime logs only safe identifiers and returns a generic database error", () => {

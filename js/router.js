@@ -36,17 +36,17 @@
   const SIDEBAR_LINKS = {
     student: [
       { page: 'dashboard',     icon: 'fa-tachometer-alt',  label: 'Dashboard'   },
-      { page: 'my-reports',    icon: 'fa-folder-open',      label: 'My Reports'  },
       { page: 'report',        icon: 'fa-bullhorn',         label: 'Report Item' },
       { page: 'new-claim',     icon: 'fa-file-circle-plus', label: 'New Claim'   },
-      { page: 'my-claims',     icon: 'fa-hand-holding',     label: 'My Claims'   },
+      { page: 'my-claims',     icon: 'fa-clipboard-list',   label: 'My Claims'   },
+      { page: 'my-reports',    icon: 'fa-folder-open',      label: 'My Reports'  },
       { page: 'conversations', icon: 'fa-comments',         label: 'Messages'    },
     ],
     admin: [
       { page: 'dashboard',     icon: 'fa-tachometer-alt',  label: 'Dashboard'      },
+      { page: 'report',        icon: 'fa-bullhorn',         label: 'Report Item'    },
+      { page: 'claim-requests',icon: 'fa-clipboard-list',   label: 'Claim Requests' },
       { page: 'student-lost-reports', icon: 'fa-folder-open', label: 'Student Lost Reports' },
-      { page: 'report',        icon: 'fa-circle-plus',      label: 'Report Item' },
-      { page: 'claim-requests',icon: 'fa-clipboard-list',  label: 'Claim Requests' },
       { page: 'conversations', icon: 'fa-comments',         label: 'Messages'       },
     ],
   };

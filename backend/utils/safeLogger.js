@@ -12,8 +12,18 @@ function logError(context, error) {
   console.error(String(context || "Server operation failed."), safeErrorMetadata(error));
 }
 
+function logStartupError(context, error, environment = process.env) {
+  if (environment.NODE_ENV === "production") {
+    return logError(context, error);
+  }
+  console.error(
+    String(context || "Server startup failed."),
+    error?.stack || error
+  );
+}
+
 function logInfo(event, metadata = {}) {
   console.log(String(event || "Server event"), metadata);
 }
 
-module.exports = { logError, logInfo, safeErrorMetadata };
+module.exports = { logError, logInfo, logStartupError, safeErrorMetadata };

@@ -15,7 +15,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const descriptionAssistantRoutes = require("./routes/descriptionAssistantRoutes");
 const { expirePendingClaims } = require("./services/claimExpirationService");
 const { createCorsOptions } = require("./config/cors");
-const { logError, logInfo } = require("./utils/safeLogger");
+const { logError, logInfo, logStartupError } = require("./utils/safeLogger");
 const { securityHeaders } = require("./middleware/securityHeaders");
 const { getAuthConfig } = require("./config/auth");
 
@@ -88,7 +88,7 @@ async function startServer() {
     server.on("close", () => clearInterval(expirationTimer));
     return server;
   } catch (err) {
-    logError("server.startup_failed", err);
+    logStartupError("server.startup_failed", err);
     throw err;
   }
 }
