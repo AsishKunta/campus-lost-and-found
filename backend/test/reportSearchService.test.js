@@ -149,3 +149,42 @@ test("ranking remains bounded on a practical 5,000-report candidate set", () => 
   assert.ok(Array.isArray(results));
   assert.ok(durationMs < 2000, `ranking took ${durationMs.toFixed(1)}ms`);
 });
+
+test("ranking stays fast on 5,000 unique reports (no repeated text to cache)", () => {
+  // The fixture-cycling test above repeats a few strings, which can hide
+  // per-comparison overhead. Unique text per report is closer to real data.
+  const colors = ["black", "white", "red", "blue", "green", "gray"];
+  const items = ["backpack", "laptop", "phone", "wallet", "jacket", "bottle"];
+  const places = ["library", "student union", "dining hall", "gym", "parking garage"];
+  const reports = Array.from({ length: 5000 }, (_, index) => ({
+    id: index,
+    itemName: `${colors[index % colors.length]} ${items[index % items.length]} ${index}`,
+    description: `${items[(index * 7) % items.length]} with sticker and strap serial ${index * 7919}`,
+    location: `${places[index % places.length]} room ${index % 400}`,
+    itemCategory: "Bags", category: index % 2 ? "Lost" : "Found",
+    lifecycleStatus: "active", dateFound: "2026-07-25",
+  }));
+  const started = process.hrtime.bigint();
+  const results = searchReports("black backpack library last month", reports, { now: NOW }).results;
+  const durationMs = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(results.length > 0);
+  // Measured around 150-200 ms; the previous implementation took about 5,000 ms.
+  assert.ok(durationMs < 1500, `ranking took ${durationMs.toFixed(1)}ms`);
+});
+
+test("fuzzy matching tolerates typos but rejects words of very different length", () => {
+  assert.ok(fuzzySimilarity("backpack", "backpak") > 0.8);
+  assert.ok(fuzzySimilarity("headphones", "headphone") > 0.8);
+  assert.equal(fuzzySimilarity("phone", "smartphone"), 0);
+  assert.equal(fuzzySimilarity("key", "keys"), 0);
+  assert.equal(fuzzySimilarity("Backpack", "backpack"), 1);
+});
+
+test("synonym variants resolve to one canonical term when ranking", () => {
+  const reports = [
+    { id: 1, itemName: "Silver AirPods", itemCategory: "Electronics", category: "Found", location: "Gym", dateFound: "2026-08-01", description: "Wireless earbuds in a case", lifecycleStatus: "active" },
+    { id: 2, itemName: "Water flask", itemCategory: "Accessories", category: "Found", location: "Gym", dateFound: "2026-08-01", description: "Steel flask", lifecycleStatus: "active" },
+  ];
+  assert.equal(searchReports("headphones gym", reports, { now: NOW }).results[0].id, 1);
+  assert.equal(searchReports("water bottle gym", reports, { now: NOW }).results[0].id, 2);
+});
