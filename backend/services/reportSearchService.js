@@ -66,48 +66,86 @@ function levenshtein(left, right) {
   return previous[right.length];
 }
 
-function fuzzySimilarity(left, right) {
-  const a = normalizeText(left);
-  const b = normalizeText(right);
+// Core of fuzzySimilarity for inputs that are already normalized.
+function fuzzySimilarityNormalized(a, b) {
   if (!a || !b) return 0;
   if (a === b) return 1;
   const longest = Math.max(a.length, b.length);
   if (longest < 5) return 0;
-  const distance = levenshtein(a, b);
   const allowed = longest >= 9 ? 2 : 1;
+  // Edit distance is never smaller than the length difference, so skip the
+  // O(n*m) computation when the words cannot possibly be close enough.
+  if (Math.abs(a.length - b.length) > allowed) return 0;
+  const distance = levenshtein(a, b);
   return distance <= allowed ? 1 - distance / longest : 0;
 }
 
-function canonicalTerm(token) {
-  const normalized = normalizeText(token);
-  for (const [canonical, variants] of Object.entries(SYNONYM_GROUPS)) {
-    if (variants.some((variant) => normalizeText(variant) === normalized)) return canonical;
-  }
-  return normalized;
+function fuzzySimilarity(left, right) {
+  return fuzzySimilarityNormalized(normalizeText(left), normalizeText(right));
 }
 
+// SYNONYM_GROUPS is constant, so normalize it once at load time instead of
+// re-normalizing every variant on every lookup.
+const SYNONYM_LOOKUP = new Map();
+const SYNONYM_PHRASES = [];
+for (const [canonical, variants] of Object.entries(SYNONYM_GROUPS)) {
+  const phrases = [];
+  for (const variant of variants) {
+    const normalizedVariant = normalizeText(variant);
+    if (!SYNONYM_LOOKUP.has(normalizedVariant)) SYNONYM_LOOKUP.set(normalizedVariant, canonical);
+    if (normalizedVariant) phrases.push(phraseRegex(normalizedVariant));
+  }
+  SYNONYM_PHRASES.push({ canonical, phrases });
+}
+
+function phraseRegex(normalizedPhrase) {
+  const escaped = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|\\s)${escaped}(?:$|\\s)`);
+}
+
+// For a token that is already normalized.
+function canonicalNormalized(normalized) {
+  return SYNONYM_LOOKUP.get(normalized) ?? normalized;
+}
+
+function canonicalTerm(token) {
+  return canonicalNormalized(normalizeText(token));
+}
+
+const phraseRegexCache = new Map();
 function containsPhrase(text, phrase) {
-  const escaped = normalizeText(phrase).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return Boolean(escaped && new RegExp(`(?:^|\\s)${escaped}(?:$|\\s)`).test(text));
+  const normalizedPhrase = normalizeText(phrase);
+  if (!normalizedPhrase) return false;
+  let regex = phraseRegexCache.get(normalizedPhrase);
+  if (!regex) {
+    regex = phraseRegex(normalizedPhrase);
+    phraseRegexCache.set(normalizedPhrase, regex);
+  }
+  return regex.test(text);
+}
+
+function tokensFromNormalized(normalized) {
+  return normalized.split(" ").filter((token) => token.length > 1 && !STOP_WORDS.has(token));
 }
 
 function tokens(value) {
-  return normalizeText(value).split(" ").filter((token) => token.length > 1 && !STOP_WORDS.has(token));
+  return tokensFromNormalized(normalizeText(value));
 }
 
 function expandedTokens(value) {
   const normalized = normalizeText(value);
-  const result = tokens(normalized).map(canonicalTerm);
-  for (const [canonical, variants] of Object.entries(SYNONYM_GROUPS)) {
-    if (variants.some((variant) => containsPhrase(normalized, variant))) result.push(canonical);
+  const result = tokensFromNormalized(normalized).map(canonicalNormalized);
+  for (const { canonical, phrases } of SYNONYM_PHRASES) {
+    if (phrases.some((regex) => regex.test(normalized))) result.push(canonical);
   }
   return [...new Set(result)];
 }
 
+// Both tokens come from expandedTokens, so they are already normalized.
 function tokenMatch(queryToken, candidateToken) {
-  const left = canonicalTerm(queryToken);
-  const right = canonicalTerm(candidateToken);
-  return left === right ? 1 : fuzzySimilarity(left, right);
+  const left = canonicalNormalized(queryToken);
+  const right = canonicalNormalized(candidateToken);
+  return left === right ? 1 : fuzzySimilarityNormalized(left, right);
 }
 
 function overlap(queryTokens, value) {
@@ -294,10 +332,11 @@ function relevanceLabel(score) {
 function searchReports(query, reports, options = {}) {
   const parsed = parseSearchQuery(query, options);
   if (!parsed.normalized) return { parsed, results: [] };
+  const now = options.now || new Date();
   const results = reports
     .map((report) => scoreReport(parsed, report))
     .filter(Boolean)
-    .sort((left, right) => right.relevanceScore - left.relevanceScore || dateDifferenceInDays(right.dateFound, options.now || new Date()) - dateDifferenceInDays(left.dateFound, options.now || new Date()));
+    .sort((left, right) => right.relevanceScore - left.relevanceScore || dateDifferenceInDays(right.dateFound, now) - dateDifferenceInDays(left.dateFound, now));
   return { parsed, results };
 }
 
